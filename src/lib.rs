@@ -32,6 +32,12 @@ pub struct LcdElement {
     pub y: u32,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct SerialTransferData {
+    pub lcd_config: LcdConfig,
+    pub sensor_values: Vec<SensorValue>,
+}
+
 /// Render the image
 /// The image will be a RGB8 png image
 ///
