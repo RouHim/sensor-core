@@ -38,6 +38,18 @@ pub struct SerialTransferData {
     pub sensor_values: Vec<SensorValue>,
 }
 
+pub fn test(){
+    let mut data = SerialTransferData::default();
+
+    // Serialisieren
+    let mut buf = Vec::new();
+    data.serialize(&mut rmp_serde::Serializer::new(&mut buf)).unwrap();
+
+    // Deserialisieren
+    let deserialized_data: LcdConfig = Deserialize::deserialize(&mut rmp_serde::Deserializer::new(&buf[..])).unwrap();
+
+}
+
 /// Render the image
 /// The image will be a RGB8 png image
 ///

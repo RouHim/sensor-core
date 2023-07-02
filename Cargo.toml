@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rmp-serde = "1.1"
 image = "0.24"        # Image processing
 imageproc = "0.23"    # Image processing
 rusttype = "0.9.3"    #
