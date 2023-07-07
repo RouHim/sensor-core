@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use image::DynamicImage::ImageRgb8;
 use image::{ImageBuffer, ImageOutputFormat};
 use rusttype::{Font, Scale};
-use image::DynamicImage::ImageRgb8;
-use std::io::{Cursor, Seek, SeekFrom};
+use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::io::{Cursor, Seek, SeekFrom};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct LcdConfig {
@@ -38,23 +38,11 @@ pub struct TransferData {
     pub sensor_values: Vec<SensorValue>,
 }
 
-pub fn test(){
-    let mut data = TransferData::default();
-
-    // Serialisieren
-    let mut buf = Vec::new();
-    data.serialize(&mut rmp_serde::Serializer::new(&mut buf)).unwrap();
-
-    // Deserialisieren
-    let deserialized_data: LcdConfig = Deserialize::deserialize(&mut rmp_serde::Deserializer::new(&buf[..])).unwrap();
-
-}
-
 /// Render the image
 /// The image will be a RGB8 png image
 ///
 pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) -> Vec<u8> {
-// Get the resolution from the lcd config
+    // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
     let image_height = lcd_config.resolution_height;
 
@@ -69,7 +57,6 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     let font = Font::try_from_vec(font_data).unwrap();
     let font_scale = Scale::uniform(20.0);
     let font_color = image::Rgb([255, 255, 255]);
-
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in lcd_config.elements {
