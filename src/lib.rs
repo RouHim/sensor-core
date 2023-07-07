@@ -33,13 +33,13 @@ pub struct LcdElement {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct SerialTransferData {
+pub struct TransferData {
     pub lcd_config: LcdConfig,
     pub sensor_values: Vec<SensorValue>,
 }
 
 pub fn test(){
-    let mut data = SerialTransferData::default();
+    let mut data = TransferData::default();
 
     // Serialisieren
     let mut buf = Vec::new();
