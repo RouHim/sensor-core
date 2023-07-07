@@ -1,5 +1,5 @@
 use image::DynamicImage::ImageRgb8;
-use image::{ImageBuffer, ImageOutputFormat};
+use image::{ImageBuffer, ImageOutputFormat, RgbImage};
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -41,7 +41,7 @@ pub struct TransferData {
 /// Render the image
 /// The image will be a RGB8 png image
 ///
-pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) -> Vec<u8> {
+pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) -> RgbImage {
     // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
     let image_height = lcd_config.resolution_height;
@@ -88,16 +88,7 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     // Convert the ImageBuffer to a DynamicImage RGB8
     let dynamic_img = ImageRgb8(image);
 
-    // Create a Vec<u8> buffer to write the image to it
-    let mut buf = Vec::new();
-    let mut cursor = Cursor::new(&mut buf);
-    dynamic_img
-        .write_to(&mut cursor, ImageOutputFormat::Png)
-        .unwrap();
-
-    // Reset the cursor to the beginning of the buffer
-    cursor.seek(SeekFrom::Start(0)).unwrap();
-    buf
+    dynamic_img.to_rgb8()
 }
 
 /// Provides a single SensorValue
