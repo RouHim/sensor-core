@@ -53,7 +53,7 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     }
 
     // Draw a simple text on the image using imageproc
-    let font_data = Vec::from(include_bytes!("../fonts/Roboto-Regular.ttf") as &[u8]);
+    let font_data = Vec::from(include_bytes!("../fonts/FiraCode-Regular.ttf") as &[u8]);
     let font = Font::try_from_vec(font_data).unwrap();
     let font_scale = Scale::uniform(20.0);
     let font_color = image::Rgb([255, 255, 255]);
@@ -66,10 +66,13 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
         let text_format = lcd_element.text_format;
 
         // Get the sensor value from the sensor_values Vec by sensor_id
-        let sensor_value = sensor_values.iter().find(|&s| s.id == sensor_id).unwrap();
+        let sensor_value = sensor_values.iter().find(|&s| s.id == sensor_id);
 
-        let value = sensor_value.value.as_str();
-        let unit = sensor_value.unit.as_str();
+        let (value, unit): (&str, &str) = match sensor_value {
+            Some(sensor_value) => (&sensor_value.value, &sensor_value.unit),
+            _ => ("N/A", ""),
+        };
+
         let text = text_format
             .replace("{value}", value)
             .replace("{unit}", unit);
