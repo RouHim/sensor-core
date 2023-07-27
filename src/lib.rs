@@ -28,9 +28,13 @@ pub struct LcdElement {
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub enum ElementType {
     #[default]
+    #[serde(rename = "text")]
     Text,
+    #[serde(rename = "static_image")]
     StaticImage,
+    #[serde(rename = "graph")]
     Graph,
+    #[serde(rename = "conditional_image")]
     ConditionalImage,
 }
 
