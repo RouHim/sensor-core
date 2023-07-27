@@ -1,9 +1,9 @@
+use std::fmt;
+
+use image::{ImageBuffer, RgbImage};
 use image::DynamicImage::ImageRgb8;
-use image::{ImageBuffer, ImageOutputFormat, RgbImage};
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::io::{Cursor, Seek, SeekFrom};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct LcdConfig {
@@ -12,24 +12,26 @@ pub struct LcdConfig {
     pub elements: Vec<LcdElement>,
 }
 
-impl LcdConfig {
-    fn default() -> LcdConfig {
-        LcdConfig {
-            resolution_height: 512,
-            resolution_width: 512,
-            elements: vec![],
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct LcdElement {
     pub id: String,
     pub name: String,
-    pub sensor_id: String,
-    pub text_format: String,
     pub x: u32,
     pub y: u32,
+    pub element_type: ElementType,
+    pub sensor_id: String,
+    pub text_format: String,
+    pub font_size: u32,
+    pub font_color: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub enum ElementType {
+    #[default]
+    Text,
+    StaticImage,
+    Graph,
+    ConditionalImage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
