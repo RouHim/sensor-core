@@ -30,11 +30,11 @@ pub enum ElementType {
     #[default]
     #[serde(rename = "text")]
     Text,
-    #[serde(rename = "static_image")]
+    #[serde(rename = "static-image")]
     StaticImage,
     #[serde(rename = "graph")]
     Graph,
-    #[serde(rename = "conditional_image")]
+    #[serde(rename = "conditional-image")]
     ConditionalImage,
 }
 
