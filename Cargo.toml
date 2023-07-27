@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-image = "0.24"        # Image processing
-imageproc = "0.23"    # Image processing
-rusttype = "0.9.3"    #
+serde = { version = "1.0.176", features = ["derive"] }  # Serialization
+image = "0.24.6"                                        # Image processing
+imageproc = "0.23.0"                                    # Image processing
+rusttype = "0.9.3"                                      # Font rendering
