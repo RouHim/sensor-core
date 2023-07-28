@@ -1,7 +1,8 @@
 use std::fmt;
 
-use image::DynamicImage::ImageRgb8;
-use image::{ImageBuffer, Rgb, RgbImage};
+use image::DynamicImage::ImageRgba8;
+use image::{ImageBuffer, RgbImage, Rgba};
+use imageproc::drawing;
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
@@ -20,9 +21,22 @@ pub struct LcdElement {
     pub y: u32,
     pub element_type: ElementType,
     pub sensor_id: String,
+    pub text_config: TextConfig,
+    pub image_config: ImageConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct TextConfig {
     pub text_format: String,
     pub font_size: u32,
     pub font_color: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct ImageConfig {
+    pub image_width: u32,
+    pub image_height: u32,
+    pub image_path: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -52,8 +66,8 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     let image_width = lcd_config.resolution_width;
     let image_height = lcd_config.resolution_height;
 
-    // Background color; black
-    let background_color = Rgb([0, 0, 0]);
+    // Background color: black, full opacity
+    let background_color = Rgba([0, 0, 0, 255]);
 
     // Create a new ImageBuffer with the specified resolution
     let mut image = ImageBuffer::new(image_width, image_height);
@@ -77,31 +91,62 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
         // diff between type
         match lcd_element.element_type {
             ElementType::Text => {
-                draw_text(&mut image, &font, lcd_element, x, y, sensor_value);
+                draw_text(
+                    &mut image,
+                    &font,
+                    lcd_element.text_config,
+                    x,
+                    y,
+                    sensor_value,
+                );
             }
-            ElementType::StaticImage => {}
+            ElementType::StaticImage => {
+                draw_image(&mut image, lcd_element.image_config, x, y);
+            }
             ElementType::Graph => {}
             ElementType::ConditionalImage => {}
         }
     }
 
-    // Convert the ImageBuffer to a DynamicImage RGB8
-    let dynamic_img = ImageRgb8(image);
+    // Convert the ImageBuffer to a DynamicImage RGBA8
+    let dynamic_img = ImageRgba8(image);
 
+    // Convert the DynamicImage to a RgbImage
     dynamic_img.to_rgb8()
 }
 
+fn draw_image(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    image_config: ImageConfig,
+    x: i32,
+    y: i32,
+) {
+    let image_path = image_config.image_path;
+    let image_width = image_config.image_width;
+    let image_height = image_config.image_height;
+
+    let overlay_image = image::open(image_path).unwrap().to_rgba8();
+    let overlay_image = image::imageops::resize(
+        &overlay_image,
+        image_width,
+        image_height,
+        image::imageops::FilterType::Nearest,
+    );
+
+    image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+}
+
 fn draw_text(
-    image: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     font: &Font,
-    lcd_element: LcdElement,
+    text_config: TextConfig,
     x: i32,
     y: i32,
     sensor_value: Option<&SensorValue>,
 ) {
-    let font_scale = Scale::uniform(lcd_element.font_size as f32);
-    let font_color: Rgb<u8> = hex_to_color(&lcd_element.font_color);
-    let text_format = lcd_element.text_format;
+    let font_scale = Scale::uniform(text_config.font_size as f32);
+    let font_color: Rgba<u8> = hex_to_color(&text_config.font_color);
+    let text_format = text_config.text_format;
 
     let (value, unit): (&str, &str) = match sensor_value {
         Some(sensor_value) => (&sensor_value.value, &sensor_value.unit),
@@ -112,21 +157,19 @@ fn draw_text(
         .replace("{value}", value)
         .replace("{unit}", unit);
 
-    imageproc::drawing::draw_text_mut(image, font_color, x, y, font_scale, font, text.as_str());
+    drawing::draw_text_mut(image, font_color, x, y, font_scale, font, text.as_str());
 }
 
-/// Converts a hex string to a Rgb<u8>
+/// Converts a hex string to a Rgba<u8>
 /// The hex string must be in the format #RRGGBB
 /// Example: #FF0000
-/// Returns a Rgb<u8> struct
-fn hex_to_color(string: &str) -> Rgb<u8> {
+/// Returns a Rgba<u8> struct
+fn hex_to_color(string: &str) -> Rgba<u8> {
     let hex = string.trim_start_matches('#');
-    let rgb = u32::from_str_radix(hex, 16).unwrap();
-    Rgb([
-        (rgb >> 16) as u8,
-        ((rgb >> 8) & 0xff) as u8,
-        (rgb & 0xff) as u8,
-    ])
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap();
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap();
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap();
+    Rgba([r, g, b, 255])
 }
 
 /// Provides a single SensorValue
