@@ -6,5 +6,8 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0.176", features = ["derive"] }  # Serialization
 image = "0.24.6"                                        # Image processing
-imageproc = "0.23.0"                                    # Image processing
-rusttype = "0.9.3"                                      # Font rendering
+imageproc = "0.23.0"                                    # Extended image processing
+rusttype = "0.9.3"                                      # Font handling / rendering
+base64 = "0.21.2"                                       # Base64 encoding / decoding
+log = "0.4.19"                                          # Logging
+env_logger = "0.10.0"                                   # Logging

@@ -1,19 +1,65 @@
+use std::collections::HashMap;
 use std::fmt;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 
 use image::DynamicImage::ImageRgba8;
-use image::{ImageBuffer, RgbImage, Rgba};
+use image::{ImageBuffer, RgbImage, Rgba, RgbaImage};
 use imageproc::drawing;
+use log::error;
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+/// Indicates the current type of message to be sent to the display.
+/// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
+/// Or the actual render loop, where the prev. stored asses will be used to render the image.
+/// The type is used to deserialize the data to the correct struct.
+/// The data is a vector of bytes, which will be deserialized to the correct struct, depending on the type.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct TransportMessage {
+    pub transport_type: TransportType,
+    pub data: Vec<u8>,
+}
+
+/// Represents the type of the message to be sent to the display.
+/// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
+/// Or the actual render loop, where the prev. stored asses will be used to render the image.
+/// The type is used to deserialize the data to the correct struct.
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub enum TransportType {
+    /// Deserialize, PartialEq to PrepareData
+    PrepareData,
+    /// Deserialize, PartialEq to AssetData
+    RenderImage,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+pub struct RenderData {
+    pub lcd_config: LcdConfig,
+    pub sensor_values: Vec<SensorValue>,
+}
+
+/// Represents the preparation data for the render process.
+/// It holds all static assets to be rendered.
+/// This is done once before the loop starts.
+/// Each asset will be stored on the display locally, and load during the render process by its
+/// asset id / element id
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct AssetData {
+    /// Key is the element id / asset id
+    /// Value is the asset data
+    pub asset_data: HashMap<String, Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct LcdConfig {
     pub resolution_height: u32,
     pub resolution_width: u32,
     pub elements: Vec<LcdElement>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct LcdElement {
     pub id: String,
     pub name: String,
@@ -25,21 +71,21 @@ pub struct LcdElement {
     pub image_config: ImageConfig,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct TextConfig {
     pub text_format: String,
     pub font_size: u32,
     pub font_color: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ImageConfig {
     pub image_width: u32,
     pub image_height: u32,
     pub image_path: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum ElementType {
     #[default]
     #[serde(rename = "text")]
@@ -52,15 +98,20 @@ pub enum ElementType {
     ConditionalImage,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct TransferData {
-    pub lcd_config: LcdConfig,
-    pub sensor_values: Vec<SensorValue>,
+/// Provides a single SensorValue
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Default)]
+pub struct SensorValue {
+    pub id: String,
+    pub value: String,
+    pub unit: String,
+    pub label: String,
+    pub sensor_type: String,
 }
+
+pub const ASSET_DATA_DIR: &str = "/tmp/sensor-display";
 
 /// Render the image
 /// The image will be a RGB8 png image
-///
 pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) -> RgbImage {
     // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
@@ -101,7 +152,7 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
                 );
             }
             ElementType::StaticImage => {
-                draw_image(&mut image, lcd_element.image_config, x, y);
+                draw_image(&mut image, lcd_element, x, y);
             }
             ElementType::Graph => {}
             ElementType::ConditionalImage => {}
@@ -115,23 +166,21 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     dynamic_img.to_rgb8()
 }
 
-fn draw_image(
-    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    image_config: ImageConfig,
-    x: i32,
-    y: i32,
-) {
-    let image_path = image_config.image_path;
-    let image_width = image_config.image_width;
-    let image_height = image_config.image_height;
+fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x: i32, y: i32) {
+    let file_path = format!("{}/{}", ASSET_DATA_DIR, element.id);
 
-    let overlay_image = image::open(image_path).unwrap().to_rgba8();
-    let overlay_image = image::imageops::resize(
-        &overlay_image,
-        image_width,
-        image_height,
-        image::imageops::FilterType::Nearest,
-    );
+    if !Path::new(&file_path).exists() {
+        error!("File {} does not exist", file_path);
+        return;
+    }
+
+    // Open image as with
+    let overlay_image: RgbaImage = image::load(
+        BufReader::new(File::open(file_path).unwrap()),
+        image::ImageFormat::Png,
+    )
+    .unwrap()
+    .to_rgba8();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
 }
@@ -170,16 +219,6 @@ fn hex_to_color(string: &str) -> Rgba<u8> {
     let g = u8::from_str_radix(&hex[2..4], 16).unwrap();
     let b = u8::from_str_radix(&hex[4..6], 16).unwrap();
     Rgba([r, g, b, 255])
-}
-
-/// Provides a single SensorValue
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SensorValue {
-    pub id: String,
-    pub value: String,
-    pub unit: String,
-    pub label: String,
-    pub sensor_type: String,
 }
 
 /// Renders a SensorValue to a string
