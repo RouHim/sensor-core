@@ -11,3 +11,4 @@ rusttype = "0.9.3"                                      # Font handling / render
 base64 = "0.21.2"                                       # Base64 encoding / decoding
 log = "0.4.19"                                          # Logging
 env_logger = "0.10.0"                                   # Logging
+lazy_static = "1.4.0"                                   # Lazy statics

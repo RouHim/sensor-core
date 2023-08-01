@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::{fmt, fs};
 
-use image::DynamicImage::ImageRgba8;
-use image::{ImageBuffer, RgbImage, Rgba, RgbaImage};
+use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
+use lazy_static::lazy_static;
 use log::error;
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
@@ -109,10 +109,14 @@ pub struct SensorValue {
 }
 
 pub const ASSET_DATA_DIR: &str = "/tmp/sensor-display";
+const FONT_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
 
 /// Render the image
 /// The image will be a RGB8 png image
-pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) -> RgbImage {
+pub fn render_lcd_image(
+    lcd_config: LcdConfig,
+    sensor_values: Vec<SensorValue>,
+) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
     let image_height = lcd_config.resolution_height;
@@ -127,8 +131,9 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
     }
 
     // Draw a simple text on the image using imageproc
-    let font_data = Vec::from(include_bytes!("../fonts/FiraCode-Regular.ttf") as &[u8]);
-    let font = Font::try_from_vec(font_data).unwrap();
+    lazy_static! {
+        static ref FONT: Font<'static> = Font::try_from_bytes(FONT_DATA).unwrap();
+    };
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in lcd_config.elements {
@@ -144,7 +149,7 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
             ElementType::Text => {
                 draw_text(
                     &mut image,
-                    &font,
+                    &FONT,
                     lcd_element.text_config,
                     x,
                     y,
@@ -159,11 +164,7 @@ pub fn render_lcd_image(lcd_config: LcdConfig, sensor_values: Vec<SensorValue>) 
         }
     }
 
-    // Convert the ImageBuffer to a DynamicImage RGBA8
-    let dynamic_img = ImageRgba8(image);
-
-    // Convert the DynamicImage to a RgbImage
-    dynamic_img.to_rgb8()
+    image
 }
 
 fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x: i32, y: i32) {
@@ -174,13 +175,11 @@ fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x
         return;
     }
 
-    // Open image as with
-    let overlay_image: RgbaImage = image::load(
-        BufReader::new(File::open(file_path).unwrap()),
-        image::ImageFormat::Png,
-    )
-    .unwrap()
-    .to_rgba8();
+    // Read image into memory
+    // We heavily assume that this is already png encoded
+    // To skip the expensive png decoding
+    let img_data = fs::read(file_path).unwrap();
+    let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
 }
