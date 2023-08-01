@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 use std::{fmt, fs};
 
@@ -109,6 +107,7 @@ pub struct SensorValue {
 }
 
 pub const ASSET_DATA_DIR: &str = "/tmp/sensor-display";
+
 const FONT_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
 
 /// Render the image
@@ -176,8 +175,7 @@ fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x
     }
 
     // Read image into memory
-    // We heavily assume that this is already png encoded
-    // To skip the expensive png decoding
+    // We heavily assume that this is already png encoded to skip the expensive png decoding
     let img_data = fs::read(file_path).unwrap();
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
