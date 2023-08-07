@@ -9,6 +9,8 @@ use log::error;
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
+pub mod graph_renderer;
+
 /// Indicates the current type of message to be sent to the display.
 /// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
 /// Or the actual render loop, where the prev. stored asses will be used to render the image.
@@ -35,7 +37,7 @@ pub enum TransportType {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct RenderData {
     pub lcd_config: LcdConfig,
-    pub sensor_values: Vec<SensorValue>,
+    pub sensor_value_history: Vec<Vec<SensorValue>>,
 }
 
 /// Represents the preparation data for the render process.
@@ -67,6 +69,7 @@ pub struct LcdElement {
     pub sensor_id: String,
     pub text_config: TextConfig,
     pub image_config: ImageConfig,
+    pub graph_config: GraphConfig,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -81,6 +84,27 @@ pub struct ImageConfig {
     pub image_width: u32,
     pub image_height: u32,
     pub image_path: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+pub enum GraphType {
+    #[default]
+    #[serde(rename = "line")]
+    Line,
+    #[serde(rename = "line-fill")]
+    LineFill,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+pub struct GraphConfig {
+    pub sensor_values: Vec<f64>,
+    pub width: u32,
+    pub height: u32,
+    pub graph_type: GraphType,
+    pub graph_color: String,
+    pub graph_stroke_width: i32,
+    pub background_color: String,
+    pub border_color: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
@@ -114,7 +138,7 @@ const FONT_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
 /// The image will be a RGB8 png image
 pub fn render_lcd_image(
     lcd_config: LcdConfig,
-    sensor_values: Vec<SensorValue>,
+    sensor_value_history: &[Vec<SensorValue>],
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
@@ -132,7 +156,7 @@ pub fn render_lcd_image(
     // Draw a simple text on the image using imageproc
     lazy_static! {
         static ref FONT: Font<'static> = Font::try_from_bytes(FONT_DATA).unwrap();
-    };
+    }
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in lcd_config.elements {
@@ -141,7 +165,7 @@ pub fn render_lcd_image(
 
         // Get the sensor value from the sensor_values Vec by sensor_id
         let sensor_id = lcd_element.sensor_id.as_str();
-        let sensor_value = sensor_values.iter().find(|&s| s.id == sensor_id);
+        let sensor_value = sensor_value_history[0].iter().find(|&s| s.id == sensor_id);
 
         // diff between type
         match lcd_element.element_type {
@@ -158,7 +182,13 @@ pub fn render_lcd_image(
             ElementType::StaticImage => {
                 draw_image(&mut image, lcd_element, x, y);
             }
-            ElementType::Graph => {}
+            ElementType::Graph => {
+                let mut graph_config = lcd_element.graph_config;
+                graph_config.sensor_values =
+                    extract_value_sequence(sensor_value_history, lcd_element.sensor_id.as_str());
+
+                draw_graph(&mut image, x, y, graph_config);
+            }
             ElementType::ConditionalImage => {}
         }
     }
@@ -177,6 +207,13 @@ fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x
     // Read image into memory
     // We heavily assume that this is already png encoded to skip the expensive png decoding
     let img_data = fs::read(file_path).unwrap();
+    let overlay_image = image::load_from_memory(&img_data).unwrap();
+
+    image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+}
+
+fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config: GraphConfig) {
+    let img_data = graph_renderer::render(config);
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
@@ -207,15 +244,17 @@ fn draw_text(
 }
 
 /// Converts a hex string to a Rgba<u8>
-/// The hex string must be in the format #RRGGBB
-/// Example: #FF0000
+/// The hex string must be in the format #RRGGBBAA
+/// Example: #FF0000CC
 /// Returns a Rgba<u8> struct
-fn hex_to_color(string: &str) -> Rgba<u8> {
-    let hex = string.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap();
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap();
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap();
-    Rgba([r, g, b, 255])
+fn hex_to_color(hex_string: &str) -> Rgba<u8> {
+    let hex_string = hex_string.trim_start_matches('#');
+    let hex = u32::from_str_radix(hex_string, 16).unwrap();
+    let r = ((hex >> 24) & 0xff) as u8;
+    let g = ((hex >> 16) & 0xff) as u8;
+    let b = ((hex >> 8) & 0xff) as u8;
+    let a = (hex & 0xff) as u8;
+    Rgba([r, g, b, a])
 }
 
 /// Renders a SensorValue to a string
@@ -227,4 +266,24 @@ impl fmt::Display for SensorValue {
             self.id, self.value, self.label, self.sensor_type
         )
     }
+}
+
+/// Extracts the historical values from the sensor_value_history and reverses the order
+pub fn extract_value_sequence(
+    sensor_value_history: &[Vec<SensorValue>],
+    sensor_id: &str,
+) -> Vec<f64> {
+    let mut sensor_values: Vec<f64> = sensor_value_history
+        .iter()
+        .flat_map(|history_entry| {
+            history_entry.iter().find_map(|entry| {
+                if entry.id.eq(sensor_id) {
+                    return entry.value.parse().ok();
+                }
+                None
+            })
+        })
+        .collect();
+    sensor_values.reverse();
+    sensor_values
 }
