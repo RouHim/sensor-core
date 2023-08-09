@@ -41,7 +41,7 @@ pub enum TransportType {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct RenderData {
     pub lcd_config: LcdConfig,
-    pub sensor_value_history: Vec<Vec<SensorValue>>,
+    pub sensor_values: Vec<SensorValue>,
 }
 
 /// Represents the preparation data for the render process.
