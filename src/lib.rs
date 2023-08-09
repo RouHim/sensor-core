@@ -1,14 +1,16 @@
 use std::collections::HashMap;
-use std::path::Path;
-use std::{fmt, fs};
+use std::fs;
+use std::fs::DirEntry;
+use std::path::{Path, PathBuf};
 
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, ImageFormat, Rgba};
 use imageproc::drawing;
 use lazy_static::lazy_static;
 use log::error;
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
+pub mod conditional_image_renderer;
 pub mod graph_renderer;
 
 /// Indicates the current type of message to be sent to the display.
@@ -28,9 +30,11 @@ pub struct TransportMessage {
 /// The type is used to deserialize the data to the correct struct.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransportType {
-    /// Deserialize, PartialEq to PrepareData
-    PrepareData,
-    /// Deserialize, PartialEq to AssetData
+    /// De/Serialize to PrepareStaticImageData
+    PrepareStaticImage,
+    /// De/Serialize to PrepareConditionalImageData
+    PrepareConditionalImage,
+    /// De/Serialize to RenderData
     RenderImage,
 }
 
@@ -46,10 +50,22 @@ pub struct RenderData {
 /// Each asset will be stored on the display locally, and load during the render process by its
 /// asset id / element id
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct AssetData {
-    /// Key is the element id / asset id
-    /// Value is the asset data
-    pub asset_data: HashMap<String, Vec<u8>>,
+pub struct PrepareStaticImageData {
+    /// Key is the element id
+    /// Value is the element data
+    pub images_data: HashMap<String, Vec<u8>>,
+}
+
+/// Represents the preparation data for the render process.
+/// It holds all static assets to be rendered.
+/// This is done once before the loop starts.
+/// Each asset will be stored on the display locally, and load during the render process by its
+/// asset id / element id
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PrepareConditionalImageData {
+    /// Key is the element id
+    /// Value is the element data
+    pub images_data: HashMap<String, HashMap<String, Vec<u8>>>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -70,6 +86,7 @@ pub struct LcdElement {
     pub text_config: TextConfig,
     pub image_config: ImageConfig,
     pub graph_config: GraphConfig,
+    pub conditional_image_config: ConditionalImageConfig,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -81,8 +98,8 @@ pub struct TextConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ImageConfig {
-    pub image_width: u32,
-    pub image_height: u32,
+    pub width: u32,
+    pub height: u32,
     pub image_path: String,
 }
 
@@ -107,6 +124,17 @@ pub struct GraphConfig {
     pub border_color: String,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+pub struct ConditionalImageConfig {
+    pub sensor_id: String,
+    pub sensor_value: String,
+    pub images_path: String,
+    pub min_sensor_value: f64,
+    pub max_sensor_value: f64,
+    pub width: u32,
+    pub height: u32,
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum ElementType {
     #[default]
@@ -127,10 +155,17 @@ pub struct SensorValue {
     pub value: String,
     pub unit: String,
     pub label: String,
-    pub sensor_type: String,
+    pub sensor_type: SensorType,
 }
 
-pub const ASSET_DATA_DIR: &str = "/tmp/sensor-display";
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
+pub enum SensorType {
+    #[default]
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "number")]
+    Number,
+}
 
 const FONT_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
 
@@ -164,6 +199,7 @@ pub fn render_lcd_image(
         let y = lcd_element.y as i32;
 
         // Get the sensor value from the sensor_values Vec by sensor_id
+        let element_id = lcd_element.id.as_str();
         let sensor_id = lcd_element.sensor_id.as_str();
         let sensor_value = sensor_value_history[0].iter().find(|&s| s.id == sensor_id);
 
@@ -189,7 +225,16 @@ pub fn render_lcd_image(
 
                 draw_graph(&mut image, x, y, graph_config);
             }
-            ElementType::ConditionalImage => {}
+            ElementType::ConditionalImage => {
+                draw_conditional_image(
+                    &mut image,
+                    x,
+                    y,
+                    element_id,
+                    lcd_element.conditional_image_config,
+                    sensor_value,
+                );
+            }
         }
     }
 
@@ -197,7 +242,8 @@ pub fn render_lcd_image(
 }
 
 fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x: i32, y: i32) {
-    let file_path = format!("{}/{}", ASSET_DATA_DIR, element.id);
+    let cache_dir = get_cache_dir(&element.id, ElementType::StaticImage).join(element.id);
+    let file_path = cache_dir.to_str().unwrap();
 
     if !Path::new(&file_path).exists() {
         error!("File {} does not exist", file_path);
@@ -217,6 +263,31 @@ fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+}
+
+fn draw_conditional_image(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    x: i32,
+    y: i32,
+    element_id: &str,
+    mut config: ConditionalImageConfig,
+    sensor_value: Option<&SensorValue>,
+) {
+    let sensor_value = match sensor_value {
+        None => {
+            return;
+        }
+        Some(sensor_value) => sensor_value,
+    };
+
+    config.sensor_value = sensor_value.value.clone();
+    let img_data =
+        conditional_image_renderer::render(element_id, &sensor_value.sensor_type, config);
+
+    if let Some(img_data) = img_data {
+        let overlay_image = image::load_from_memory(&img_data).unwrap();
+        image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+    }
 }
 
 fn draw_text(
@@ -257,17 +328,6 @@ fn hex_to_color(hex_string: &str) -> Rgba<u8> {
     Rgba([r, g, b, a])
 }
 
-/// Renders a SensorValue to a string
-impl fmt::Display for SensorValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "id: {}, value: {}, label: {} type: {}",
-            self.id, self.value, self.label, self.sensor_type
-        )
-    }
-}
-
 /// Extracts the historical values from the sensor_value_history and reverses the order
 pub fn extract_value_sequence(
     sensor_value_history: &[Vec<SensorValue>],
@@ -286,4 +346,36 @@ pub fn extract_value_sequence(
         .collect();
     sensor_values.reverse();
     sensor_values
+}
+
+/// Checks if the given DirEntry is an image
+pub fn is_image(dir_entry: &DirEntry) -> bool {
+    let entry_path = dir_entry.path();
+    let extension_string = entry_path.extension().map(|ext| ext.to_str().unwrap());
+    let image_format = extension_string.and_then(ImageFormat::from_extension);
+    image_format.map(|x| x.can_read()).unwrap_or(false)
+}
+
+/// Get the cache directory for the given element
+pub fn get_cache_dir(element_id: &str, element_type: ElementType) -> PathBuf {
+    let element_type_folder_name = match element_type {
+        ElementType::Text => "text",
+        ElementType::StaticImage => "static-image",
+        ElementType::Graph => "graph",
+        ElementType::ConditionalImage => "conditional-image",
+    };
+
+    get_cache_base_dir()
+        .join(element_type_folder_name)
+        .join(element_id)
+}
+
+/// Get the base cache directory
+pub fn get_cache_base_dir() -> PathBuf {
+    dirs::cache_dir().unwrap().join("sensor-bridge")
+}
+
+/// Get the application config dir
+pub fn get_config_dir() -> PathBuf {
+    dirs::config_dir().unwrap().join("sensor-bridge")
 }
