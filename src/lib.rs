@@ -115,6 +115,8 @@ pub enum GraphType {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct GraphConfig {
     pub sensor_values: Vec<f64>,
+    pub min_sensor_value: Option<f64>,
+    pub max_sensor_value: Option<f64>,
     pub width: u32,
     pub height: u32,
     pub graph_type: GraphType,

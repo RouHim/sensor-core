@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use crate::{GraphConfig, GraphType};
 use poloto::build;
+use resvg::{tiny_skia, usvg};
 use resvg::tiny_skia::{Color, Rect};
 use resvg::usvg::{Align, NodeExt, Options, PaintOrder, TreeParsing};
-use resvg::{tiny_skia, usvg};
-
 use tagu::prelude::Elem;
+
+use crate::{GraphConfig, GraphType};
 
 /// Renders a graph based on the given config
 /// # Returns
@@ -17,15 +17,11 @@ pub fn render(graph_config: GraphConfig) -> Vec<u8> {
     let width = graph_config.width;
     let height = graph_config.height;
 
-    let plot_data = prepare_plot_data(width, graph_config.sensor_values);
+    let plot_data = prepare_plot_data(width, &graph_config.sensor_values);
 
     let svg_data = render_graph(
         plot_data,
-        height as f64,
-        width as f64,
-        graph_config.graph_type,
-        &graph_config.graph_color,
-        graph_config.graph_stroke_width,
+        &graph_config,
     );
 
     render_to_png(
@@ -39,12 +35,12 @@ pub fn render(graph_config: GraphConfig) -> Vec<u8> {
 
 /// Prepares the plot data for the graph.
 /// Aligns the sensor values to the width of the desired graph width.
-fn prepare_plot_data(width: u32, sensor_values: Vec<f64>) -> Vec<f64> {
+fn prepare_plot_data(width: u32, sensor_values: &Vec<f64>) -> Vec<f64> {
     // Ensure that sensor values does not exceed the width, if so cut them and keep the last values
     let sensor_values = if sensor_values.len() > width as usize {
         sensor_values[(sensor_values.len() - width as usize)..].to_vec()
     } else {
-        sensor_values
+        sensor_values.to_vec()
     };
 
     // Create a new vector for the width of the image, initialize with 0
@@ -63,17 +59,13 @@ fn prepare_plot_data(width: u32, sensor_values: Vec<f64>) -> Vec<f64> {
 /// SVG data as String
 fn render_graph(
     some_numbers: Vec<f64>,
-    image_render_height: f64,
-    image_render_width: f64,
-    plot_type: GraphType,
-    plot_color: &str,
-    plot_stroke_width: i32,
+    config: &GraphConfig,
 ) -> String {
     // Because we are going to extract only the path from the svg,
     // we should render the total plot greater than the actual desired image
     // So we get a decent quality
-    let plot_width = image_render_height * 2.0;
-    let plot_height = image_render_width * 2.0;
+    let plot_width = config.width as f64 * 2.0;
+    let plot_height = config.height as f64 * 2.0;
 
     let line_data: Vec<[f64; 2]> = some_numbers
         .iter()
@@ -81,10 +73,13 @@ fn render_graph(
         .map(|(i, x)| [i as f64, *x])
         .collect();
 
-    let line_plot = match plot_type {
+    let line_plot = match config.graph_type {
         GraphType::Line => build::plot("").line(line_data),
         GraphType::LineFill => build::plot("").line_fill(line_data),
     };
+
+    let plot_color = &config.graph_color;
+    let plot_stroke_width = &config.graph_stroke_width;
 
     let header = poloto::header()
         .with_dim([plot_width, plot_height])
@@ -171,7 +166,7 @@ fn create_border(border_color: &str, line_chart_bounding_box: Rect) -> usvg::Nod
         line_chart_bounding_box.right() - 1.0,
         line_chart_bounding_box.bottom() - 1.0,
     )
-    .unwrap();
+        .unwrap();
 
     let stroke_path = tiny_skia::PathBuilder::from_rect(rect)
         .stroke(&tiny_skia::Stroke::default(), 1.0)
