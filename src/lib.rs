@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use image::{ImageBuffer, ImageFormat, Rgba};
 use imageproc::drawing;
 use lazy_static::lazy_static;
-use log::error;
+use log::{debug, error};
 use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
@@ -169,7 +170,10 @@ pub enum SensorType {
     Number,
 }
 
-const FONT_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
+lazy_static! {
+    static ref FONT: Font<'static> =
+        Font::try_from_bytes(include_bytes!("../fonts/FiraCode-Regular.ttf")).unwrap();
+}
 
 /// Render the image
 /// The image will be a RGB8 png image
@@ -177,73 +181,75 @@ pub fn render_lcd_image(
     lcd_config: LcdConfig,
     sensor_value_history: &[Vec<SensorValue>],
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let start_time = Instant::now();
+
     // Get the resolution from the lcd config
     let image_width = lcd_config.resolution_width;
     let image_height = lcd_config.resolution_height;
 
-    // Background color: black, full opacity
-    let background_color = Rgba([0, 0, 0, 255]);
-
     // Create a new ImageBuffer with the specified resolution
     let mut image = ImageBuffer::new(image_width, image_height);
-    for (_x, _y, pixel) in image.enumerate_pixels_mut() {
-        *pixel = background_color;
-    }
-
-    // Draw a simple text on the image using imageproc
-    lazy_static! {
-        static ref FONT: Font<'static> = Font::try_from_bytes(FONT_DATA).unwrap();
-    }
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in lcd_config.elements {
-        let x = lcd_element.x as i32;
-        let y = lcd_element.y as i32;
-
-        // Get the sensor value from the sensor_values Vec by sensor_id
-        let element_id = lcd_element.id.as_str();
-        let sensor_id = lcd_element.sensor_id.as_str();
-        let sensor_value = sensor_value_history[0].iter().find(|&s| s.id == sensor_id);
-
-        // diff between type
-        match lcd_element.element_type {
-            ElementType::Text => {
-                draw_text(
-                    &mut image,
-                    &FONT,
-                    lcd_element.text_config,
-                    x,
-                    y,
-                    sensor_value,
-                );
-            }
-            ElementType::StaticImage => {
-                draw_image(&mut image, lcd_element, x, y);
-            }
-            ElementType::Graph => {
-                let mut graph_config = lcd_element.graph_config;
-                graph_config.sensor_values =
-                    extract_value_sequence(sensor_value_history, lcd_element.sensor_id.as_str());
-
-                draw_graph(&mut image, x, y, graph_config);
-            }
-            ElementType::ConditionalImage => {
-                draw_conditional_image(
-                    &mut image,
-                    x,
-                    y,
-                    element_id,
-                    lcd_element.conditional_image_config,
-                    sensor_value,
-                );
-            }
-        }
+        draw_element(&mut image, lcd_element, sensor_value_history);
     }
+
+    debug!(" = Total frame render duration: {:?}", start_time.elapsed());
 
     image
 }
 
-fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x: i32, y: i32) {
+// Draw a single element on the image
+fn draw_element(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    lcd_element: LcdElement,
+    sensor_value_history: &[Vec<SensorValue>],
+) {
+    let x = lcd_element.x as i32;
+    let y = lcd_element.y as i32;
+
+    // Get the sensor value from the sensor_values Vec by sensor_id
+    let element_id = lcd_element.id.as_str();
+    let sensor_id = lcd_element.sensor_id.as_str();
+    let sensor_value = sensor_value_history[0].iter().find(|&s| s.id == sensor_id);
+
+    // diff between type
+    match lcd_element.element_type {
+        ElementType::Text => {
+            draw_text(image, lcd_element.text_config, x, y, sensor_value);
+        }
+        ElementType::StaticImage => {
+            draw_static_image(image, lcd_element, x, y);
+        }
+        ElementType::Graph => {
+            let mut graph_config = lcd_element.graph_config;
+            graph_config.sensor_values =
+                extract_value_sequence(sensor_value_history, lcd_element.sensor_id.as_str());
+
+            draw_graph(image, x, y, graph_config);
+        }
+        ElementType::ConditionalImage => {
+            draw_conditional_image(
+                image,
+                x,
+                y,
+                element_id,
+                lcd_element.conditional_image_config,
+                sensor_value,
+            );
+        }
+    }
+}
+
+fn draw_static_image(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    element: LcdElement,
+    x: i32,
+    y: i32,
+) {
+    let start_time = Instant::now();
+
     let cache_dir = get_cache_dir(&element.id, ElementType::StaticImage).join(element.id);
     let file_path = cache_dir.to_str().unwrap();
 
@@ -258,13 +264,21 @@ fn draw_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element: LcdElement, x
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+
+    // if debug enabled
+
+    debug!("    - Image render duration: {:?}", start_time.elapsed());
 }
 
 fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config: GraphConfig) {
-    let img_data = graph_renderer::render(config);
+    let start_time = Instant::now();
+
+    let img_data = graph_renderer::render(&config);
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+
+    debug!("    - Graph render duration: {:?}", start_time.elapsed());
 }
 
 fn draw_conditional_image(
@@ -275,6 +289,8 @@ fn draw_conditional_image(
     mut config: ConditionalImageConfig,
     sensor_value: Option<&SensorValue>,
 ) {
+    let start_time = Instant::now();
+
     let sensor_value = match sensor_value {
         None => {
             return;
@@ -290,18 +306,24 @@ fn draw_conditional_image(
         let overlay_image = image::load_from_memory(&img_data).unwrap();
         image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
     }
+
+    debug!(
+        "    - Conditional image render duration: {:?}",
+        start_time.elapsed()
+    );
 }
 
 fn draw_text(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    font: &Font,
     text_config: TextConfig,
     x: i32,
     y: i32,
     sensor_value: Option<&SensorValue>,
 ) {
+    let start_time = Instant::now();
+
     let font_scale = Scale::uniform(text_config.font_size as f32);
-    let font_color: Rgba<u8> = hex_to_color(&text_config.font_color);
+    let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
     let text_format = text_config.text_format;
 
     let (value, unit): (&str, &str) = match sensor_value {
@@ -313,14 +335,16 @@ fn draw_text(
         .replace("{value}", value)
         .replace("{unit}", unit);
 
-    drawing::draw_text_mut(image, font_color, x, y, font_scale, font, text.as_str());
+    drawing::draw_text_mut(image, font_color, x, y, font_scale, &FONT, text.as_str());
+
+    debug!("    - Text render duration: {:?}", start_time.elapsed());
 }
 
 /// Converts a hex string to a Rgba<u8>
 /// The hex string must be in the format #RRGGBBAA
 /// Example: #FF0000CC
 /// Returns a Rgba<u8> struct
-fn hex_to_color(hex_string: &str) -> Rgba<u8> {
+fn hex_to_rgba(hex_string: &str) -> Rgba<u8> {
     let hex_string = hex_string.trim_start_matches('#');
     let hex = u32::from_str_radix(hex_string, 16).unwrap();
     let r = ((hex >> 24) & 0xff) as u8;
