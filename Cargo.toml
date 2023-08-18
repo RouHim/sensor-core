@@ -1,7 +1,8 @@
 [package]
 name = "sensor-core"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
+
 
 [dependencies]
 serde = { version = "1.0.176", features = ["derive"] }                          # Serialization
@@ -10,7 +11,6 @@ imageproc = "0.23.0"                                                            
 rusttype = "0.9.3"                                                              # Font handling / rendering
 base64 = "0.21.2"                                                               # Base64 encoding / decoding
 log = "0.4.19"                                                                  # Logging
-env_logger = "0.10.0"                                                           # Logging
 lazy_static = "1.4.0"                                                           # Lazy statics
 poloto = "19.1.2"                                                               # Graph svg plotting
 tagu = "0.1.6"                                                                  # SVG manipulation
