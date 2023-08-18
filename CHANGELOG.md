@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/RouHim/sensor-core/compare/v1.0.0...v1.0.1) (2023-08-18)
+
+
+### Bug Fixes
+
+* **cargo:** remove unused deps ([5a41bc2](https://github.com/RouHim/sensor-core/commit/5a41bc2d4ea6d44bef9798f6dc8a00d7c9352335))
+
 # 1.0.0 (2023-08-18)
 
 
