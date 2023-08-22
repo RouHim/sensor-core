@@ -80,8 +80,8 @@ fn prepare_graph_data(width: u32, sensor_values: &Vec<f64>) -> Vec<f64> {
 fn render_line_chart(numbers: &[f64], config: &GraphConfig) -> RgbaImage {
     let width = config.width;
     let height = config.height;
-    let min_value = config.min_sensor_value.unwrap_or(get_min(numbers)) as i32;
-    let max_value = config.max_sensor_value.unwrap_or(get_max(numbers)) as i32;
+    let min_value = config.min_sensor_value.unwrap_or(get_min(numbers));
+    let max_value = config.max_sensor_value.unwrap_or(get_max(numbers));
     let line_width = config.graph_stroke_width;
     let line_color = hex_to_rgba(&config.graph_color);
     let background_color = hex_to_rgba(&config.background_color);
@@ -95,9 +95,9 @@ fn render_line_chart(numbers: &[f64], config: &GraphConfig) -> RgbaImage {
 
         // First move value between 0 and 1, where min_value is the lower bound and max_value the upper bound
         let current_value_normalized =
-            (current_value - min_value as f64) / (max_value - min_value) as f64;
+            (current_value - min_value) / (max_value - min_value);
         let next_value_normalized =
-            (next_value - min_value as f64) / (max_value - min_value) as f64;
+            (next_value - min_value) / (max_value - min_value);
 
         // Then move the value between 0 and height
         let img_line_start = current_value_normalized * height as f64;
@@ -128,8 +128,8 @@ fn render_line_chart(numbers: &[f64], config: &GraphConfig) -> RgbaImage {
 fn render_line_chart_filled(numbers: &[f64], config: &GraphConfig) -> RgbaImage {
     let width = config.width;
     let height = config.height;
-    let min_value = config.min_sensor_value.unwrap_or(get_min(numbers)) as i32;
-    let max_value = config.max_sensor_value.unwrap_or(get_max(numbers)) as i32;
+    let min_value = config.min_sensor_value.unwrap_or(get_min(numbers));
+    let max_value = config.max_sensor_value.unwrap_or(get_max(numbers));
     let line_width = config.graph_stroke_width;
     let line_color = hex_to_rgba(&config.graph_color);
     let fill_color = line_color;
@@ -144,9 +144,9 @@ fn render_line_chart_filled(numbers: &[f64], config: &GraphConfig) -> RgbaImage 
 
         // First move value between 0 and 1, where min_value is the lower bound and max_value the upper bound
         let current_value_normalized =
-            (current_value - min_value as f64) / (max_value - min_value) as f64;
+            (current_value - min_value) / (max_value - min_value);
         let next_value_normalized =
-            (next_value - min_value as f64) / (max_value - min_value) as f64;
+            (next_value - min_value) / (max_value - min_value);
 
         // Then move the value between 0 and height
         let img_line_start = current_value_normalized * height as f64;
