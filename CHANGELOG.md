@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/RouHim/sensor-core/compare/v1.0.4...v1.1.0) (2023-08-22)
+
+
+### Features
+
+* **graph:** graph rendering without 3rd party plot lib ([bef504b](https://github.com/RouHim/sensor-core/commit/bef504bdbccc101e35730fcd61f22773a5d947ca))
+
 ## [1.0.4](https://github.com/RouHim/sensor-core/compare/v1.0.3...v1.0.4) (2023-08-21)
 
 ## [1.0.3](https://github.com/RouHim/sensor-core/compare/v1.0.2...v1.0.3) (2023-08-19)
