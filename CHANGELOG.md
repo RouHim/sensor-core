@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/RouHim/sensor-core/compare/v1.1.1...v1.1.2) (2023-08-22)
+
+
+### Bug Fixes
+
+* **graph:** wrong min max value casting ([10e7c00](https://github.com/RouHim/sensor-core/commit/10e7c00f27f0c592de4c802219474964dd74c9e4))
+
 ## [1.1.1](https://github.com/RouHim/sensor-core/compare/v1.1.0...v1.1.1) (2023-08-22)
 
 # [1.1.0](https://github.com/RouHim/sensor-core/compare/v1.0.4...v1.1.0) (2023-08-22)
