@@ -9,7 +9,6 @@ serde = { version = "1.0.185", features = ["derive"] }                          
 image = "0.24.7"                                                                # Image processing
 imageproc = "0.23.0"                                                            # Extended image processing
 rusttype = "0.9.3"                                                              # Font handling / rendering
-base64 = "0.21.2"                                                               # Base64 encoding / decoding
 log = "0.4.20"                                                                  # Logging
 lazy_static = "1.4.0"                                                           # Lazy statics
 dirs = "5.0.1"                                                                  # Directory handling
