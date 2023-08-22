@@ -12,7 +12,4 @@ rusttype = "0.9.3"                                                              
 base64 = "0.21.2"                                                               # Base64 encoding / decoding
 log = "0.4.20"                                                                  # Logging
 lazy_static = "1.4.0"                                                           # Lazy statics
-poloto = "19.1.2"                                                               # Graph svg plotting
-tagu = "0.1.6"                                                                  # SVG manipulation
-resvg = { version = "0.35.0", default-features = false, features = ["png"] }    # SVG rendering
 dirs = "5.0.1"                                                                  # Directory handling
