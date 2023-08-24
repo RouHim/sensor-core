@@ -206,8 +206,8 @@ fn draw_element(
     lcd_element: LcdElement,
     sensor_value_history: &[Vec<SensorValue>],
 ) {
-    let x = lcd_element.x as i32;
-    let y = lcd_element.y as i32;
+    let x = lcd_element.x;
+    let y = lcd_element.y;
 
     // Get the sensor value from the sensor_values Vec by sensor_id
     let element_id = lcd_element.id.as_str();
