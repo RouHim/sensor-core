@@ -1,3 +1,5 @@
+## [1.1.5](https://github.com/RouHim/sensor-core/compare/v1.1.4...v1.1.5) (2023-08-24)
+
 ## [1.1.4](https://github.com/RouHim/sensor-core/compare/v1.1.3...v1.1.4) (2023-08-24)
 
 
