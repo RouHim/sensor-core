@@ -80,8 +80,8 @@ pub struct LcdConfig {
 pub struct LcdElement {
     pub id: String,
     pub name: String,
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
     pub element_type: ElementType,
     pub sensor_id: String,
     pub text_config: TextConfig,
@@ -264,8 +264,6 @@ fn draw_static_image(
     let overlay_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
-
-    // if debug enabled
 
     debug!("    - Image render duration: {:?}", start_time.elapsed());
 }
