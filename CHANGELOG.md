@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/RouHim/sensor-core/compare/v1.1.3...v1.1.4) (2023-08-24)
+
+
+### Bug Fixes
+
+* **position:** allow negative coordinates for elements ([aae4b72](https://github.com/RouHim/sensor-core/commit/aae4b7231794e38fe77273d1da002e912a29b949))
+
 ## [1.1.3](https://github.com/RouHim/sensor-core/compare/v1.1.2...v1.1.3) (2023-08-24)
 
 ## [1.1.2](https://github.com/RouHim/sensor-core/compare/v1.1.1...v1.1.2) (2023-08-22)
