@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-serde = { version = "1.0.186", features = ["derive"] }                          # Serialization
+serde = { version = "1.0.187", features = ["derive"] }                          # Serialization
 image = "0.24.7"                                                                # Image processing
 imageproc = "0.23.0"                                                            # Extended image processing
 rusttype = "0.9.3"                                                              # Font handling / rendering
