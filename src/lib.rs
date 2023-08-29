@@ -84,10 +84,10 @@ pub struct LcdElement {
     pub y: i32,
     pub element_type: ElementType,
     pub sensor_id: String,
-    pub text_config: TextConfig,
-    pub image_config: ImageConfig,
-    pub graph_config: GraphConfig,
-    pub conditional_image_config: ConditionalImageConfig,
+    pub text_config: Option<TextConfig>,
+    pub image_config: Option<ImageConfig>,
+    pub graph_config: Option<GraphConfig>,
+    pub conditional_image_config: Option<ConditionalImageConfig>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -217,13 +217,13 @@ fn draw_element(
     // diff between type
     match lcd_element.element_type {
         ElementType::Text => {
-            draw_text(image, lcd_element.text_config, x, y, sensor_value);
+            draw_text(image, lcd_element.text_config.unwrap(), x, y, sensor_value);
         }
         ElementType::StaticImage => {
-            draw_static_image(image, lcd_element, x, y);
+            draw_static_image(image, &lcd_element.id, x, y);
         }
         ElementType::Graph => {
-            let mut graph_config = lcd_element.graph_config;
+            let mut graph_config = lcd_element.graph_config.unwrap();
             graph_config.sensor_values =
                 extract_value_sequence(sensor_value_history, lcd_element.sensor_id.as_str());
 
@@ -235,22 +235,17 @@ fn draw_element(
                 x,
                 y,
                 element_id,
-                lcd_element.conditional_image_config,
+                lcd_element.conditional_image_config.unwrap(),
                 sensor_value,
             );
         }
     }
 }
 
-fn draw_static_image(
-    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    element: LcdElement,
-    x: i32,
-    y: i32,
-) {
+fn draw_static_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element_id: &str, x: i32, y: i32) {
     let start_time = Instant::now();
 
-    let cache_dir = get_cache_dir(&element.id, ElementType::StaticImage).join(element.id);
+    let cache_dir = get_cache_dir(element_id, ElementType::StaticImage).join(element_id);
     let file_path = cache_dir.to_str().unwrap();
 
     if !Path::new(&file_path).exists() {
