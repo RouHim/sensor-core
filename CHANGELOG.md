@@ -1,3 +1,15 @@
+# [1.2.0](https://github.com/RouHim/sensor-core/compare/v1.1.7...v1.2.0) (2023-08-29)
+
+
+### Bug Fixes
+
+* **pipeline:** use angular commit schema ([885e20c](https://github.com/RouHim/sensor-core/commit/885e20cbbe6cb25eb3591ba4ade1f1875ed54c5f))
+
+
+### Features
+
+* **sensorvalues:** allow empty values for not selected element types ([db739ff](https://github.com/RouHim/sensor-core/commit/db739ff143277dfe36e64f192cc703ce0be126d7))
+
 ## [1.1.7](https://github.com/RouHim/sensor-core/compare/v1.1.6...v1.1.7) (2023-08-26)
 
 ## [1.1.6](https://github.com/RouHim/sensor-core/compare/v1.1.5...v1.1.6) (2023-08-25)
