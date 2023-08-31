@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/RouHim/sensor-core/compare/v1.2.0...v1.3.0) (2023-08-31)
+
+
+### Features
+
+* **lib:** big refactoring ([cd18294](https://github.com/RouHim/sensor-core/commit/cd18294f84c31d68d309dd778a239672678acc9f))
+
 # [1.2.0](https://github.com/RouHim/sensor-core/compare/v1.1.7...v1.2.0) (2023-08-29)
 
 
