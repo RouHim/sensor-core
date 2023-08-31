@@ -6,9 +6,7 @@ use std::time::Instant;
 
 use image::{ImageBuffer, ImageFormat, Rgba};
 use imageproc::drawing;
-use lazy_static::lazy_static;
 use log::{debug, error};
-use rusttype::{Font, Scale};
 use serde::{Deserialize, Serialize};
 
 pub mod conditional_image_renderer;
@@ -31,6 +29,8 @@ pub struct TransportMessage {
 /// The type is used to deserialize the data to the correct struct.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransportType {
+    /// De/Serialize to PrepareTextData
+    PrepareText,
     /// De/Serialize to PrepareStaticImageData
     PrepareStaticImage,
     /// De/Serialize to PrepareConditionalImageData
@@ -41,8 +41,20 @@ pub enum TransportType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct RenderData {
-    pub lcd_config: LcdConfig,
+    pub display_config: DisplayConfig,
     pub sensor_values: Vec<SensorValue>,
+}
+
+/// Represents the preparation data for the render process.
+/// It holds all static assets to be rendered.
+/// This is done once before the loop starts.
+/// Each asset will be stored on the display locally, and load during the render process by its
+/// asset id / element id
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PrepareTextData {
+    /// Key is the element id
+    /// Value is the font data
+    pub font_data: HashMap<String, Vec<u8>>,
 }
 
 /// Represents the preparation data for the render process.
@@ -70,20 +82,19 @@ pub struct PrepareConditionalImageData {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub struct LcdConfig {
+pub struct DisplayConfig {
     pub resolution_height: u32,
     pub resolution_width: u32,
-    pub elements: Vec<LcdElement>,
+    pub elements: Vec<ElementConfig>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub struct LcdElement {
+pub struct ElementConfig {
     pub id: String,
     pub name: String,
+    pub element_type: ElementType,
     pub x: i32,
     pub y: i32,
-    pub element_type: ElementType,
-    pub sensor_id: String,
     pub text_config: Option<TextConfig>,
     pub image_config: Option<ImageConfig>,
     pub graph_config: Option<GraphConfig>,
@@ -92,9 +103,13 @@ pub struct LcdElement {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct TextConfig {
-    pub text_format: String,
+    pub sensor_id: String,
+    pub format: String,
+    pub font_family: String,
     pub font_size: u32,
     pub font_color: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -115,6 +130,7 @@ pub enum GraphType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct GraphConfig {
+    pub sensor_id: String,
     pub sensor_values: Vec<f64>,
     pub min_sensor_value: Option<f64>,
     pub max_sensor_value: Option<f64>,
@@ -170,28 +186,23 @@ pub enum SensorType {
     Number,
 }
 
-lazy_static! {
-    static ref FONT: Font<'static> =
-        Font::try_from_bytes(include_bytes!("../fonts/FiraCode-Regular.ttf")).unwrap();
-}
-
 /// Render the image
 /// The image will be a RGB8 png image
 pub fn render_lcd_image(
-    lcd_config: LcdConfig,
+    display_config: DisplayConfig,
     sensor_value_history: &[Vec<SensorValue>],
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let start_time = Instant::now();
 
     // Get the resolution from the lcd config
-    let image_width = lcd_config.resolution_width;
-    let image_height = lcd_config.resolution_height;
+    let image_width = display_config.resolution_width;
+    let image_height = display_config.resolution_height;
 
     // Create a new ImageBuffer with the specified resolution
     let mut image = ImageBuffer::new(image_width, image_height);
 
     // Iterate over lcd elements and draw them on the image
-    for lcd_element in lcd_config.elements {
+    for lcd_element in display_config.elements {
         draw_element(&mut image, lcd_element, sensor_value_history);
     }
 
@@ -203,21 +214,21 @@ pub fn render_lcd_image(
 // Draw a single element on the image
 fn draw_element(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    lcd_element: LcdElement,
+    lcd_element: ElementConfig,
     sensor_value_history: &[Vec<SensorValue>],
 ) {
     let x = lcd_element.x;
     let y = lcd_element.y;
-
-    // Get the sensor value from the sensor_values Vec by sensor_id
     let element_id = lcd_element.id.as_str();
-    let sensor_id = lcd_element.sensor_id.as_str();
-    let sensor_value = sensor_value_history[0].iter().find(|&s| s.id == sensor_id);
 
     // diff between type
     match lcd_element.element_type {
         ElementType::Text => {
-            draw_text(image, lcd_element.text_config.unwrap(), x, y, sensor_value);
+            let text_config = lcd_element.text_config.unwrap();
+            let sensor_value = sensor_value_history[0]
+                .iter()
+                .find(|&s| s.id == text_config.sensor_id);
+            draw_text(image, &lcd_element.id, text_config, x, y, sensor_value);
         }
         ElementType::StaticImage => {
             draw_static_image(image, &lcd_element.id, x, y);
@@ -225,19 +236,23 @@ fn draw_element(
         ElementType::Graph => {
             let mut graph_config = lcd_element.graph_config.unwrap();
             graph_config.sensor_values =
-                extract_value_sequence(sensor_value_history, lcd_element.sensor_id.as_str());
+                extract_value_sequence(sensor_value_history, &graph_config.sensor_id);
 
             draw_graph(image, x, y, graph_config);
         }
         ElementType::ConditionalImage => {
+            let conditional_image_config = lcd_element.conditional_image_config.unwrap();
+            let sensor_value = sensor_value_history[0]
+                .iter()
+                .find(|&s| s.id == conditional_image_config.sensor_id);
             draw_conditional_image(
                 image,
                 x,
                 y,
                 element_id,
-                lcd_element.conditional_image_config.unwrap(),
+                conditional_image_config,
                 sensor_value,
-            );
+            )
         }
     }
 }
@@ -245,7 +260,7 @@ fn draw_element(
 fn draw_static_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element_id: &str, x: i32, y: i32) {
     let start_time = Instant::now();
 
-    let cache_dir = get_cache_dir(element_id, ElementType::StaticImage).join(element_id);
+    let cache_dir = get_cache_dir(element_id, &ElementType::StaticImage).join(element_id);
     let file_path = cache_dir.to_str().unwrap();
 
     if !Path::new(&file_path).exists() {
@@ -293,7 +308,7 @@ fn draw_conditional_image(
 
     config.sensor_value = sensor_value.value.clone();
     let img_data =
-        conditional_image_renderer::render(element_id, &sensor_value.sensor_type, config);
+        conditional_image_renderer::render(element_id, &sensor_value.sensor_type, &config);
 
     if let Some(img_data) = img_data {
         let overlay_image = image::load_from_memory(&img_data).unwrap();
@@ -308,16 +323,16 @@ fn draw_conditional_image(
 
 fn draw_text(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    element_id: &str,
     text_config: TextConfig,
     x: i32,
     y: i32,
     sensor_value: Option<&SensorValue>,
 ) {
     let start_time = Instant::now();
-
-    let font_scale = Scale::uniform(text_config.font_size as f32);
+    let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
     let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
-    let text_format = text_config.text_format;
+    let text_format = text_config.format;
 
     let (value, unit): (&str, &str) = match sensor_value {
         Some(sensor_value) => (&sensor_value.value, &sensor_value.unit),
@@ -328,7 +343,18 @@ fn draw_text(
         .replace("{value}", value)
         .replace("{unit}", unit);
 
-    drawing::draw_text_mut(image, font_color, x, y, font_scale, &FONT, text.as_str());
+    let cache_dir = get_cache_dir(element_id, &ElementType::Text).join(element_id);
+    let font_path = cache_dir.to_str().unwrap();
+
+    if !Path::new(&font_path).exists() {
+        error!("File {} does not exist", font_path);
+        return;
+    }
+
+    let font_data = fs::read(font_path).unwrap();
+    let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
+
+    drawing::draw_text_mut(image, font_color, x, y, font_scale, &font, text.as_str());
 
     debug!("    - Text render duration: {:?}", start_time.elapsed());
 }
@@ -337,7 +363,7 @@ fn draw_text(
 /// The hex string must be in the format #RRGGBBAA
 /// Example: #FF0000CC
 /// Returns a Rgba<u8> struct
-fn hex_to_rgba(hex_string: &str) -> Rgba<u8> {
+pub fn hex_to_rgba(hex_string: &str) -> Rgba<u8> {
     let hex_string = hex_string.trim_start_matches('#');
     let hex = u32::from_str_radix(hex_string, 16).unwrap();
     let r = ((hex >> 24) & 0xff) as u8;
@@ -376,7 +402,7 @@ pub fn is_image(dir_entry: &DirEntry) -> bool {
 }
 
 /// Get the cache directory for the given element
-pub fn get_cache_dir(element_id: &str, element_type: ElementType) -> PathBuf {
+pub fn get_cache_dir(element_id: &str, element_type: &ElementType) -> PathBuf {
     let element_type_folder_name = match element_type {
         ElementType::Text => "text",
         ElementType::StaticImage => "static-image",
@@ -391,10 +417,14 @@ pub fn get_cache_dir(element_id: &str, element_type: ElementType) -> PathBuf {
 
 /// Get the base cache directory
 pub fn get_cache_base_dir() -> PathBuf {
-    dirs::cache_dir().unwrap().join("sensor-bridge")
+    dirs::cache_dir()
+        .unwrap()
+        .join(std::env::var("SENSOR_BRIDGE_APP_NAME").unwrap())
 }
 
 /// Get the application config dir
 pub fn get_config_dir() -> PathBuf {
-    dirs::config_dir().unwrap().join("sensor-bridge")
+    dirs::config_dir()
+        .unwrap()
+        .join(std::env::var("SENSOR_BRIDGE_APP_NAME").unwrap())
 }

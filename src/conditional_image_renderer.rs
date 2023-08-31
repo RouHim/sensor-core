@@ -8,14 +8,14 @@ use crate::{ConditionalImageConfig, ElementType, SensorType};
 pub fn render(
     element_id: &str,
     sensor_type: &SensorType,
-    conditional_image_config: ConditionalImageConfig,
+    conditional_image_config: &ConditionalImageConfig,
 ) -> Option<Vec<u8>> {
-    let cache_image_folder = crate::get_cache_dir(element_id, ElementType::ConditionalImage);
+    let cache_image_folder = crate::get_cache_dir(element_id, &ElementType::ConditionalImage);
     let cache_image_folder = cache_image_folder.to_str().unwrap();
 
     match sensor_type {
-        SensorType::Text => render_text_sensor(&conditional_image_config, cache_image_folder),
-        SensorType::Number => render_number_sensor(&conditional_image_config, cache_image_folder),
+        SensorType::Text => render_text_sensor(conditional_image_config, cache_image_folder),
+        SensorType::Number => render_number_sensor(conditional_image_config, cache_image_folder),
     }
 }
 
