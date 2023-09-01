@@ -10,3 +10,11 @@ imageproc = "0.23.0"                                                            
 rusttype = "0.9.3"                                                              # Font handling / rendering
 log = "0.4.20"                                                                  # Logging
 dirs = "5.0.1"                                                                  # Directory handling
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+font-loader = { git = "https://github.com/matprec/rust-font-loader" }
+
+[[bench]]
+name = "text_render_benchmark"
+harness = false
