@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/RouHim/sensor-core/compare/v1.3.1...v1.4.0) (2023-09-01)
+
+
+### Features
+
+* **tests:** add text render benchmark ([9ad09be](https://github.com/RouHim/sensor-core/commit/9ad09be43e99815e6efb57682546c8c1616e0d41))
+
 ## [1.3.1](https://github.com/RouHim/sensor-core/compare/v1.3.0...v1.3.1) (2023-08-31)
 
 # [1.3.0](https://github.com/RouHim/sensor-core/compare/v1.2.0...v1.3.0) (2023-08-31)
