@@ -83,39 +83,61 @@ pub struct PrepareConditionalImageData {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct DisplayConfig {
+    #[serde(default)]
     pub resolution_height: u32,
+    #[serde(default)]
     pub resolution_width: u32,
+    #[serde(default)]
     pub elements: Vec<ElementConfig>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ElementConfig {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub element_type: ElementType,
+    #[serde(default)]
     pub x: i32,
+    #[serde(default)]
     pub y: i32,
+    #[serde(default)]
     pub text_config: Option<TextConfig>,
+    #[serde(default)]
     pub image_config: Option<ImageConfig>,
+    #[serde(default)]
     pub graph_config: Option<GraphConfig>,
+    #[serde(default)]
     pub conditional_image_config: Option<ConditionalImageConfig>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct TextConfig {
+    #[serde(default)]
     pub sensor_id: String,
+    #[serde(default)]
     pub format: String,
+    #[serde(default)]
     pub font_family: String,
+    #[serde(default)]
     pub font_size: u32,
+    #[serde(default)]
     pub font_color: String,
+    #[serde(default)]
     pub width: u32,
+    #[serde(default)]
     pub height: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ImageConfig {
+    #[serde(default)]
     pub width: u32,
+    #[serde(default)]
     pub height: u32,
+    #[serde(default)]
     pub image_path: String,
 }
 
@@ -130,27 +152,45 @@ pub enum GraphType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct GraphConfig {
+    #[serde(default)]
     pub sensor_id: String,
+    #[serde(default)]
     pub sensor_values: Vec<f64>,
+    #[serde(default)]
     pub min_sensor_value: Option<f64>,
+    #[serde(default)]
     pub max_sensor_value: Option<f64>,
+    #[serde(default)]
     pub width: u32,
+    #[serde(default)]
     pub height: u32,
+    #[serde(default)]
     pub graph_type: GraphType,
+    #[serde(default)]
     pub graph_color: String,
+    #[serde(default)]
     pub graph_stroke_width: i32,
+    #[serde(default)]
     pub background_color: String,
+    #[serde(default)]
     pub border_color: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ConditionalImageConfig {
+    #[serde(default)]
     pub sensor_id: String,
+    #[serde(default)]
     pub sensor_value: String,
+    #[serde(default)]
     pub images_path: String,
+    #[serde(default)]
     pub min_sensor_value: f64,
+    #[serde(default)]
     pub max_sensor_value: f64,
+    #[serde(default)]
     pub width: u32,
+    #[serde(default)]
     pub height: u32,
 }
 
@@ -170,10 +210,15 @@ pub enum ElementType {
 /// Provides a single SensorValue
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Default)]
 pub struct SensorValue {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub value: String,
+    #[serde(default)]
     pub unit: String,
+    #[serde(default)]
     pub label: String,
+    #[serde(default)]
     pub sensor_type: SensorType,
 }
 
