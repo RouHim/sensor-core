@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/RouHim/sensor-core/compare/v1.4.0...v1.5.0) (2023-09-01)
+
+
+### Features
+
+* **config:** use default values for serde parsing when impossible to parse ([1ae9ffe](https://github.com/RouHim/sensor-core/commit/1ae9ffe8f989ebc0c607efe5f558b7148b80a547))
+
 # [1.4.0](https://github.com/RouHim/sensor-core/compare/v1.3.1...v1.4.0) (2023-09-01)
 
 
