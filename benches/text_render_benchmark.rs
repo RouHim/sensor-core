@@ -3,7 +3,10 @@ use font_loader::system_fonts;
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
 use log::error;
-use sensor_core::{get_cache_dir, hex_to_rgba, ElementType, SensorType, SensorValue, TextAlign, TextConfig, text_renderer};
+use sensor_core::{
+    get_cache_dir, hex_to_rgba, text_renderer, ElementType, SensorType, SensorValue, TextAlign,
+    TextConfig,
+};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
