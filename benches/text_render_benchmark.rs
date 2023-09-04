@@ -3,7 +3,7 @@ use font_loader::system_fonts;
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
 use log::error;
-use sensor_core::{get_cache_dir, hex_to_rgba, ElementType, SensorType, SensorValue, TextConfig};
+use sensor_core::{get_cache_dir, hex_to_rgba, ElementType, SensorType, SensorValue, TextAlign, TextConfig, text_renderer};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -22,6 +22,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         width: 100,
         height: 100,
         format: "{value} {unit}".to_string(),
+        alignment: TextAlign::Left,
     };
     let x = 0;
     let y = 0;
@@ -44,6 +45,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         .build();
     let font_data = system_fonts::get(&font_family).unwrap().0;
     fs::write(cache_dir, &font_data).unwrap();
+    let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
 
     // Create a arc mutex that holds a hashmap of fonts
     let mut font_data_table = HashMap::new();
@@ -75,6 +77,18 @@ fn criterion_benchmark(criterion: &mut Criterion) {
                 black_box(y),
                 black_box(Some(&sensor_value)),
             );
+        })
+    });
+
+    criterion.bench_function("draw text neo", |bencher| {
+        bencher.iter(|| {
+            text_renderer::render(
+                black_box(base_image.width()),
+                black_box(base_image.height()),
+                black_box(&text_config),
+                black_box(Some(&sensor_value)),
+                black_box(&font),
+            )
         })
     });
 }

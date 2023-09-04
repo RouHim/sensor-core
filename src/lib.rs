@@ -5,12 +5,13 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use image::{ImageBuffer, ImageFormat, Rgba};
-use imageproc::drawing;
+
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
 
 pub mod conditional_image_renderer;
 pub mod graph_renderer;
+pub mod text_renderer;
 
 /// Indicates the current type of message to be sent to the display.
 /// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
@@ -129,6 +130,19 @@ pub struct TextConfig {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
+    #[serde(default)]
+    pub alignment: TextAlign,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
+pub enum TextAlign {
+    #[default]
+    #[serde(rename = "left")]
+    Left,
+    #[serde(rename = "center")]
+    Center,
+    #[serde(rename = "right")]
+    Right,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -327,9 +341,9 @@ fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config
     let start_time = Instant::now();
 
     let img_data = graph_renderer::render(&config);
-    let overlay_image = image::load_from_memory(&img_data).unwrap();
+    let graph_image = image::load_from_memory(&img_data).unwrap();
 
-    image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+    image::imageops::overlay(image, &graph_image, x as i64, y as i64);
 
     debug!("    - Graph render duration: {:?}", start_time.elapsed());
 }
@@ -356,8 +370,8 @@ fn draw_conditional_image(
         conditional_image_renderer::render(element_id, &sensor_value.sensor_type, &config);
 
     if let Some(img_data) = img_data {
-        let overlay_image = image::load_from_memory(&img_data).unwrap();
-        image::imageops::overlay(image, &overlay_image, x as i64, y as i64);
+        let conditional_image = image::load_from_memory(&img_data).unwrap();
+        image::imageops::overlay(image, &conditional_image, x as i64, y as i64);
     }
 
     debug!(
@@ -375,18 +389,6 @@ fn draw_text(
     sensor_value: Option<&SensorValue>,
 ) {
     let start_time = Instant::now();
-    let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
-    let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
-    let text_format = text_config.format;
-
-    let (value, unit): (&str, &str) = match sensor_value {
-        Some(sensor_value) => (&sensor_value.value, &sensor_value.unit),
-        _ => ("N/A", ""),
-    };
-
-    let text = text_format
-        .replace("{value}", value)
-        .replace("{unit}", unit);
 
     let cache_dir = get_cache_dir(element_id, &ElementType::Text).join(element_id);
     let font_path = cache_dir.to_str().unwrap();
@@ -399,7 +401,14 @@ fn draw_text(
     let font_data = fs::read(font_path).unwrap();
     let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
 
-    drawing::draw_text_mut(image, font_color, x, y, font_scale, &font, text.as_str());
+    let text_image = text_renderer::render(
+        image.width(),
+        image.height(),
+        &text_config,
+        sensor_value,
+        &font,
+    );
+    image::imageops::overlay(image, &text_image, x as i64, y as i64);
 
     debug!("    - Text render duration: {:?}", start_time.elapsed());
 }
