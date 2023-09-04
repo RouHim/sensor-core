@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/RouHim/sensor-core/compare/v1.5.0...v1.6.0) (2023-09-04)
+
+
+### Features
+
+* **rendering:** increase accuracy of text rendering and allow alignment ([f84fc67](https://github.com/RouHim/sensor-core/commit/f84fc679260efa8c3d15c0d210ca27ec21a3427c))
+
 # [1.5.0](https://github.com/RouHim/sensor-core/compare/v1.4.0...v1.5.0) (2023-09-01)
 
 
