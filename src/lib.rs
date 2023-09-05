@@ -40,6 +40,8 @@ pub enum TransportType {
     RenderImage,
 }
 
+/// Represents the data to be rendered on a display.
+/// It holds the display config and the sensor values.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct RenderData {
     pub display_config: DisplayConfig,
@@ -82,6 +84,8 @@ pub struct PrepareConditionalImageData {
     pub images_data: HashMap<String, HashMap<String, Vec<u8>>>,
 }
 
+/// Represents the display config.
+/// It holds the resolution and the elements to be rendered.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct DisplayConfig {
     #[serde(default)]
@@ -92,6 +96,7 @@ pub struct DisplayConfig {
     pub elements: Vec<ElementConfig>,
 }
 
+/// Represents a single element to be rendered on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ElementConfig {
     #[serde(default)]
@@ -114,6 +119,7 @@ pub struct ElementConfig {
     pub conditional_image_config: Option<ConditionalImageConfig>,
 }
 
+/// Represents a text element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct TextConfig {
     #[serde(default)]
@@ -134,6 +140,7 @@ pub struct TextConfig {
     pub alignment: TextAlign,
 }
 
+/// Represents the text alignment of a text element.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum TextAlign {
     #[default]
@@ -145,6 +152,7 @@ pub enum TextAlign {
     Right,
 }
 
+/// Represents a static image element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ImageConfig {
     #[serde(default)]
@@ -155,6 +163,7 @@ pub struct ImageConfig {
     pub image_path: String,
 }
 
+/// Represents the type of a graph element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum GraphType {
     #[default]
@@ -164,6 +173,7 @@ pub enum GraphType {
     LineFill,
 }
 
+/// Represents a graph element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct GraphConfig {
     #[serde(default)]
@@ -190,6 +200,7 @@ pub struct GraphConfig {
     pub border_color: String,
 }
 
+/// Represents a conditional image element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct ConditionalImageConfig {
     #[serde(default)]
@@ -208,6 +219,7 @@ pub struct ConditionalImageConfig {
     pub height: u32,
 }
 
+/// Represents the type of an element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum ElementType {
     #[default]
@@ -236,6 +248,9 @@ pub struct SensorValue {
     pub sensor_type: SensorType,
 }
 
+/// Represents the type of a sensor value.
+/// This is used to determine how to render the value.
+/// For example a text value will be rendered as text, while a number value can be rendered as a graph.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum SensorType {
     #[default]
@@ -270,7 +285,9 @@ pub fn render_lcd_image(
     image
 }
 
-// Draw a single element on the image
+/// Draws a single element on the image.
+/// The element will be drawn on the given image buffer.
+/// Distinguishes between the different element types and calls the corresponding draw function.
 fn draw_element(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     lcd_element: ElementConfig,
@@ -316,6 +333,7 @@ fn draw_element(
     }
 }
 
+/// Draws a static image on the image buffer.
 fn draw_static_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element_id: &str, x: i32, y: i32) {
     let start_time = Instant::now();
 
@@ -348,6 +366,7 @@ fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config
     debug!("    - Graph render duration: {:?}", start_time.elapsed());
 }
 
+/// Draws a conditional image on the image buffer.
 fn draw_conditional_image(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     x: i32,
@@ -380,6 +399,7 @@ fn draw_conditional_image(
     );
 }
 
+/// Draws a text element on the image buffer.
 fn draw_text(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     element_id: &str,

@@ -83,6 +83,7 @@ pub fn render(
 }
 
 /// Calculates the bounding box of the text in the image
+/// This is done by detecting the first and last non-transparent pixel in each direction
 fn get_bounding_box(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> imageproc::rect::Rect {
     let mut min_x = 0;
     let mut min_y = 0;
