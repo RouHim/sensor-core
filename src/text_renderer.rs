@@ -1,8 +1,8 @@
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
+use rusttype::Font;
 
 use crate::{hex_to_rgba, SensorValue, TextAlign, TextConfig};
-use rusttype::Font;
 
 /// Renders the text element to a png image.
 /// Render Pipeline:

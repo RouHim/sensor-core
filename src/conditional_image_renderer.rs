@@ -1,6 +1,7 @@
-use log::error;
 use std::ffi::OsString;
 use std::{cmp, fs};
+
+use log::error;
 
 use crate::{ConditionalImageConfig, ElementType, SensorType};
 

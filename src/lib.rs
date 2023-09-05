@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use image::{ImageBuffer, ImageFormat, Rgba};
-
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
 
@@ -265,6 +264,7 @@ pub enum SensorType {
 pub fn render_lcd_image(
     display_config: DisplayConfig,
     sensor_value_history: &[Vec<SensorValue>],
+    fonts_data: &HashMap<String, Vec<u8>>,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let start_time = Instant::now();
 
@@ -277,7 +277,7 @@ pub fn render_lcd_image(
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in display_config.elements {
-        draw_element(&mut image, lcd_element, sensor_value_history);
+        draw_element(&mut image, lcd_element, sensor_value_history, fonts_data);
     }
 
     debug!(" = Total frame render duration: {:?}", start_time.elapsed());
@@ -292,6 +292,7 @@ fn draw_element(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     lcd_element: ElementConfig,
     sensor_value_history: &[Vec<SensorValue>],
+    fonts_data: &HashMap<String, Vec<u8>>,
 ) {
     let x = lcd_element.x;
     let y = lcd_element.y;
@@ -304,7 +305,15 @@ fn draw_element(
             let sensor_value = sensor_value_history[0]
                 .iter()
                 .find(|&s| s.id == text_config.sensor_id);
-            draw_text(image, &lcd_element.id, text_config, x, y, sensor_value);
+            draw_text(
+                image,
+                &lcd_element.id,
+                text_config,
+                x,
+                y,
+                sensor_value,
+                fonts_data,
+            );
         }
         ElementType::StaticImage => {
             draw_static_image(image, &lcd_element.id, x, y);
@@ -402,24 +411,26 @@ fn draw_conditional_image(
 /// Draws a text element on the image buffer.
 fn draw_text(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    element_id: &str,
+    _element_id: &str,
     text_config: TextConfig,
     x: i32,
     y: i32,
     sensor_value: Option<&SensorValue>,
+    fonts_data: &HashMap<String, Vec<u8>>,
 ) {
     let start_time = Instant::now();
 
-    let cache_dir = get_cache_dir(element_id, &ElementType::Text).join(element_id);
-    let font_path = cache_dir.to_str().unwrap();
-
-    if !Path::new(&font_path).exists() {
-        error!("File {} does not exist", font_path);
-        return;
-    }
-
-    let font_data = fs::read(font_path).unwrap();
-    let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
+    let font_data = match fonts_data.get(&text_config.font_family) {
+        Some(font_data) => font_data,
+        None => {
+            error!(
+                "Font data for font family {} not found",
+                text_config.font_family
+            );
+            return;
+        }
+    };
+    let font = rusttype::Font::try_from_bytes(font_data).unwrap();
 
     let text_image = text_renderer::render(
         image.width(),
