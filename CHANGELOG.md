@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/RouHim/sensor-core/compare/v1.6.0...v1.7.0) (2023-09-05)
+
+
+### Features
+
+* **release:** release number without v ([45311eb](https://github.com/RouHim/sensor-core/commit/45311eb154687b0b8473e15824d6b4bf29fffe22))
+
 # [1.6.0](https://github.com/RouHim/sensor-core/compare/v1.5.0...v1.6.0) (2023-09-04)
 
 
