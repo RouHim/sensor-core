@@ -57,6 +57,7 @@ fn render_number_sensor(
     image_path.and_then(|image_path| fs::read(image_path).ok())
 }
 
+/// Selects the image that fits the sensor value best
 fn get_image_based_on_text_sensor_value(
     sensor_value: &str,
     images_folder_path: &str,
@@ -189,7 +190,7 @@ fn to_number(string: OsString) -> Option<f32> {
 
     let mut number_string: String = number_string
         .chars()
-        .filter(|c| c.is_ascii_digit() || *c == '.' || *c == '-' || *c == '+')
+        .filter(|c| c.is_ascii_digit() || *c == '.')
         .collect();
 
     // Remove all "." at the beginning
