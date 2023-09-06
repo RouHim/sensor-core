@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/RouHim/sensor-core/compare/1.8.2...1.8.3) (2023-09-06)
+
+
+### Bug Fixes
+
+* **condimage:** wrong image name parsing ([3be2b89](https://github.com/RouHim/sensor-core/commit/3be2b891c31d8503464b25a3812816963c756d2a))
+
 ## [1.8.2](https://github.com/RouHim/sensor-core/compare/1.8.1...1.8.2) (2023-09-05)
 
 
