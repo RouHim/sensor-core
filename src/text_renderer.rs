@@ -64,7 +64,11 @@ pub fn render(
 
     // 5. Overlay the text image on the new image buffer according to the text alignment
     // Center text vertically
-    let y = (text_config.height - text_image.height()) / 2;
+    let y: u32 = if text_config.height > text_image.height() {
+        (text_config.height - text_image.height()) / 2
+    } else {
+        0
+    };
     match text_config.alignment {
         TextAlign::Left => {
             image::imageops::overlay(&mut image, &text_image, 0, y as i64);
