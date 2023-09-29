@@ -1,3 +1,10 @@
+## [1.8.8](https://github.com/RouHim/sensor-core/compare/1.8.7...1.8.8) (2023-09-29)
+
+
+### Bug Fixes
+
+* **renderer:** int overflow if text font is larger than text field height ([97dc2b7](https://github.com/RouHim/sensor-core/commit/97dc2b73f3c8e2e14dec35e75fadc2aaa0ff17c0))
+
 ## [1.8.7](https://github.com/RouHim/sensor-core/compare/1.8.6...1.8.7) (2023-09-28)
 
 
