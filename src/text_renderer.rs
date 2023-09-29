@@ -69,16 +69,20 @@ pub fn render(
     } else {
         0
     };
+    let x: u32 = if text_config.width > text_image.width() {
+        text_config.width - text_image.width()
+    } else {
+        0
+    };
     match text_config.alignment {
         TextAlign::Left => {
             image::imageops::overlay(&mut image, &text_image, 0, y as i64);
         }
         TextAlign::Center => {
-            let x = (text_config.width - text_image.width()) / 2;
+            let x = x / 2;
             image::imageops::overlay(&mut image, &text_image, x as i64, y as i64);
         }
         TextAlign::Right => {
-            let x = text_config.width - text_image.width();
             image::imageops::overlay(&mut image, &text_image, x as i64, y as i64);
         }
     }
