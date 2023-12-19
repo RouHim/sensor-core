@@ -103,10 +103,10 @@ fn render_line_chart(numbers: &[f64], config: &GraphConfig) -> RgbaImage {
 
         // Render line on image
         let x0 = i;
-        let y0 = height - img_line_start as u32;
+        let y0 = height as f64 - img_line_start;
 
         let x1 = i + 1;
-        let y1 = height - img_line_end as u32;
+        let y1 = height as f64 - img_line_end;
 
         // Draw graph line
         for offset in -half_line_width as i32..=half_line_width as i32 {
