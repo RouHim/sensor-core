@@ -1,3 +1,10 @@
+## [1.8.16](https://github.com/RouHim/sensor-core/compare/1.8.15...1.8.16) (2023-12-19)
+
+
+### Bug Fixes
+
+* **renderer:** avoid uzize underflow ([09726c7](https://github.com/RouHim/sensor-core/commit/09726c71210989b22345ccd2b5d5aa0e289a1e51))
+
 ## [1.8.15](https://github.com/RouHim/sensor-core/compare/1.8.14...1.8.15) (2023-11-21)
 
 ## [1.8.14](https://github.com/RouHim/sensor-core/compare/1.8.13...1.8.14) (2023-11-07)
