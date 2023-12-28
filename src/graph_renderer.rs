@@ -149,11 +149,12 @@ fn render_line_chart_filled(numbers: &[f64], config: &GraphConfig) -> RgbaImage 
         let img_line_end = next_value_normalized * height as f64;
 
         // Render line on image
+        // Avoid attempt to subtract with overflow by using saturating_sub
         let x0 = i;
-        let y0 = height - img_line_start as u32;
+        let y0 = height.saturating_sub(img_line_start as u32);
 
         let x1 = i + 1;
-        let y1 = height - img_line_end as u32;
+        let y1 = height.saturating_sub(img_line_end as u32);
 
         // Fill the area under the line until image bottom, respect the line width
         let mut y = y0;
