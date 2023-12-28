@@ -1,3 +1,10 @@
+## [1.8.17](https://github.com/RouHim/sensor-core/compare/1.8.16...1.8.17) (2023-12-28)
+
+
+### Bug Fixes
+
+* **renderer:** usize underflow for graph renderer ([618d102](https://github.com/RouHim/sensor-core/commit/618d1024968e0e3e05eee11eeb58dbee65c0c752))
+
 ## [1.8.16](https://github.com/RouHim/sensor-core/compare/1.8.15...1.8.16) (2023-12-19)
 
 
