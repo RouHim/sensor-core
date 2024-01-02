@@ -153,12 +153,14 @@ jobs:
             @semantic-release/changelog  \
             @semantic-release/exec \
             @semantic-release/commit-analyzer \
+            @semantic-release-cargo/semantic-release-cargo \
             conventional-changelog-conventionalcommits
 
       - name: Generate Semantic Release Notes and Create Release
         id: semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: npx semantic-release
 
       - name: Delete old releases
