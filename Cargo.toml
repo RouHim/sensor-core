@@ -1,7 +1,16 @@
 [package]
 name = "sensor-core"
-version = "0.0.0"
+authors = ["Rouven Himmelstein <rouven@himmelstein.info>"]
+version = "0.0.0" # will be replaced by the github action build script
+license = "GPL-3.0"
 edition = "2021"
+description = "Core library for the sensor-bridge/display project"
+readme = "README.md"
+homepage = "https://github.com/RouHim/sensor-core"
+repository = "https://github.com/RouHim/sensor-core"
+keywords = ["sensor", "display", "embedded", "rust"]
+categories = ["rendering"]
+
 
 [dependencies]
 serde = { version = "1.0.193", features = ["derive"] }                          # Serialization
