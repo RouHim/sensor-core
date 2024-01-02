@@ -1,3 +1,15 @@
+# [1.11.0](https://github.com/RouHim/sensor-core/compare/1.10.0...1.11.0) (2024-01-02)
+
+
+### Bug Fixes
+
+* compile error ([89e0cd7](https://github.com/RouHim/sensor-core/commit/89e0cd7d827ff9b045da2f7ec952efe3886ac3dd))
+
+
+### Features
+
+* **ui:** add min max avg functionality ([6645aee](https://github.com/RouHim/sensor-core/commit/6645aeeae252134cfb8ce7c900205bf59236e71c))
+
 # [1.10.0](https://github.com/RouHim/sensor-core/compare/1.9.0...1.10.0) (2024-01-02)
 
 
