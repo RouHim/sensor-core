@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/RouHim/sensor-core/compare/1.8.17...1.9.0) (2024-01-02)
+
+
+### Features
+
+* **pipeline:** publish / release to crates.io ([6e79cd9](https://github.com/RouHim/sensor-core/commit/6e79cd98ac81a0671830d4299991cae55a32d9fd))
+
 ## [1.8.17](https://github.com/RouHim/sensor-core/compare/1.8.16...1.8.17) (2023-12-28)
 
 
