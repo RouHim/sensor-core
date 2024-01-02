@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/RouHim/sensor-core/compare/1.11.0...1.12.0) (2024-01-02)
+
+
+### Features
+
+* **pipeline:** avoid concurrent builds per branch ([c7b30f2](https://github.com/RouHim/sensor-core/commit/c7b30f2c242f21e0bcd4610950019d72d83fc56c))
+
 # [1.11.0](https://github.com/RouHim/sensor-core/compare/1.10.0...1.11.0) (2024-01-02)
 
 
