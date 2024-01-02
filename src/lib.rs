@@ -124,6 +124,8 @@ pub struct TextConfig {
     #[serde(default)]
     pub sensor_id: String,
     #[serde(default)]
+    pub value_modifier: SensorValueModifier,
+    #[serde(default)]
     pub format: String,
     #[serde(default)]
     pub font_family: String,
@@ -247,6 +249,22 @@ pub struct SensorValue {
     pub sensor_type: SensorType,
 }
 
+/// Represents the modifier of a sensor value.
+/// This is used to modify the value before rendering.
+/// For example to output the average or max value of a sensor.
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
+pub enum SensorValueModifier {
+    #[default]
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "min")]
+    Min,
+    #[serde(rename = "max")]
+    Max,
+    #[serde(rename = "avg")]
+    Avg,
+}
+
 /// Represents the type of a sensor value.
 /// This is used to determine how to render the value.
 /// For example a text value will be rendered as text, while a number value can be rendered as a graph.
@@ -302,16 +320,13 @@ fn draw_element(
     match lcd_element.element_type {
         ElementType::Text => {
             let text_config = lcd_element.text_config.unwrap();
-            let sensor_value = sensor_value_history[0]
-                .iter()
-                .find(|&s| s.id == text_config.sensor_id);
             draw_text(
                 image,
                 &lcd_element.id,
                 text_config,
                 x,
                 y,
-                sensor_value,
+                sensor_value_history,
                 fonts_data,
             );
         }
@@ -415,7 +430,7 @@ fn draw_text(
     text_config: TextConfig,
     x: i32,
     y: i32,
-    sensor_value: Option<&SensorValue>,
+    sensor_value_history: &[Vec<SensorValue>],
     fonts_data: &HashMap<String, Vec<u8>>,
 ) {
     let start_time = Instant::now();
@@ -436,7 +451,7 @@ fn draw_text(
         image.width(),
         image.height(),
         &text_config,
-        sensor_value,
+        sensor_value_history,
         &font,
     );
     image::imageops::overlay(image, &text_image, x as i64, y as i64);

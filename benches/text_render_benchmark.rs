@@ -4,8 +4,8 @@ use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
 use log::error;
 use sensor_core::{
-    get_cache_dir, hex_to_rgba, text_renderer, ElementType, SensorType, SensorValue, TextAlign,
-    TextConfig,
+    get_cache_dir, hex_to_rgba, text_renderer, ElementType, SensorType, SensorValue,
+    SensorValueModifier, TextAlign, TextConfig,
 };
 use std::collections::HashMap;
 use std::fs;
@@ -19,6 +19,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     let element_id = "test";
     let text_config = TextConfig {
         sensor_id: "test".to_string(),
+        value_modifier: SensorValueModifier::None,
         font_family: "Arial".to_string(),
         font_size: 12,
         font_color: "#FFFFFFFF".to_string(),
@@ -89,7 +90,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
                 black_box(base_image.width()),
                 black_box(base_image.height()),
                 black_box(&text_config),
-                black_box(Some(&sensor_value)),
+                black_box(&[vec![sensor_value.clone()]]),
                 black_box(&font),
             )
         })

@@ -2,7 +2,7 @@ use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
 use rusttype::Font;
 
-use crate::{hex_to_rgba, SensorValue, TextAlign, TextConfig};
+use crate::{hex_to_rgba, SensorType, SensorValue, SensorValueModifier, TextAlign, TextConfig};
 
 /// Renders the text element to a png image.
 /// Render Pipeline:
@@ -15,23 +15,16 @@ pub fn render(
     image_width: u32,
     image_height: u32,
     text_config: &TextConfig,
-    sensor_value: Option<&SensorValue>,
+    sensor_value_history: &[Vec<SensorValue>],
     font: &Font,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     // Initialize image buffer
     let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
     let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
-    let text_format = &text_config.format;
-
-    let (value, unit): (&str, &str) = match sensor_value {
-        Some(sensor_value) => (&sensor_value.value, &sensor_value.unit),
-        _ => ("N/A", ""),
-    };
+    let sensor_id = &text_config.sensor_id;
 
     // Replace placeholders in text format
-    let text = text_format
-        .replace("{value}", value)
-        .replace("{unit}", unit);
+    let text = replace_placeholders(text_config, sensor_id, sensor_value_history);
 
     let mut image = image::RgbaImage::new(image_width, image_height);
 
@@ -88,6 +81,145 @@ pub fn render(
     }
 
     image
+}
+
+/// Replaces the placeholders in the text format with the actual values
+/// FIXME: The special placeholders like {value-avg} may be calculated multiple times
+///        This is not a problem for now because 95% of the time they are not or rarely used
+///        But if we encounter performance issues, we should optimize this (Esp. if the history is long)
+fn replace_placeholders(
+    text_config: &TextConfig,
+    sensor_id: &str,
+    sensor_value_history: &[Vec<SensorValue>],
+) -> String {
+    let mut text_format = text_config.format.clone();
+
+    if text_format.contains("{value-avg}") {
+        text_format = text_format.replace(
+            "{value-avg}",
+            get_value_avg(sensor_id, sensor_value_history).as_str(),
+        );
+    }
+
+    if text_format.contains("{value-min}") {
+        text_format = text_format.replace(
+            "{value-min}",
+            get_value_min(sensor_id, sensor_value_history).as_str(),
+        );
+    }
+
+    if text_format.contains("{value-max}") {
+        text_format = text_format.replace(
+            "{value-max}",
+            get_value_max(sensor_id, sensor_value_history).as_str(),
+        );
+    }
+
+    if text_format.contains("{value}") {
+        let value = match text_config.value_modifier {
+            SensorValueModifier::None => get_value(sensor_id, sensor_value_history),
+            SensorValueModifier::Avg => get_value_avg(sensor_id, sensor_value_history),
+            SensorValueModifier::Max => get_value_max(sensor_id, sensor_value_history),
+            SensorValueModifier::Min => get_value_min(sensor_id, sensor_value_history),
+        };
+        text_format = text_format.replace("{value}", value.as_str());
+    }
+
+    if text_format.contains("{unit}") {
+        text_format =
+            text_format.replace("{unit}", get_unit(sensor_id, sensor_value_history).as_str());
+    }
+
+    text_format
+}
+
+/// Returns the sensor unit of the latest sensor value
+fn get_unit(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+    match get_latest_value(sensor_id, sensor_value_history) {
+        Some(value) => value.unit,
+        None => "".to_string(),
+    }
+}
+
+// Returns the latest sensor value
+fn get_value(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+    match get_latest_value(sensor_id, sensor_value_history) {
+        Some(value) => value.value,
+        None => "N/A".to_string(),
+    }
+}
+
+/// Returns the minimum sensor value of all sensor values in the history
+fn get_value_min(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+    let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
+
+    // If there are no values, return N/A
+    if number_values_history.is_empty() {
+        return "N/A".to_string();
+    }
+
+    // Get the minimum value
+    let min = number_values_history
+        .iter()
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+
+    format!("{:.2}", min).to_string()
+}
+
+/// Returns the maximum sensor value of all sensor values in the history
+fn get_value_max(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+    let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
+
+    // If there are no values, return N/A
+    if number_values_history.is_empty() {
+        return "N/A".to_string();
+    }
+
+    // Get the maximum value
+    let max = number_values_history
+        .iter()
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+
+    format!("{:.2}", max).to_string()
+}
+
+/// Returns the average sensor value of all sensor values in the history
+fn get_value_avg(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+    let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
+
+    // If there are no values, return N/A
+    if number_values_history.is_empty() {
+        return "N/A".to_string();
+    }
+
+    let avg = number_values_history.iter().sum::<f64>() / number_values_history.len() as f64;
+
+    format!("{:.2}", avg).to_string()
+}
+
+fn get_sensor_values_as_number(
+    sensor_id: &str,
+    sensor_value_history: &[Vec<SensorValue>],
+) -> Vec<f64> {
+    let values = sensor_value_history
+        .iter()
+        .flat_map(|sensor_values| sensor_values.iter().find(|&s| s.id == sensor_id))
+        .filter(|sensor_value| sensor_value.sensor_type == SensorType::Number)
+        .map(|sensor_value| sensor_value.value.parse::<f64>().unwrap())
+        .collect::<Vec<f64>>();
+    values
+}
+
+fn get_latest_value(
+    sensor_id: &str,
+    sensor_value_history: &[Vec<SensorValue>],
+) -> Option<SensorValue> {
+    sensor_value_history[0]
+        .iter()
+        .find(|&s| s.id == sensor_id)
+        .cloned()
 }
 
 /// Calculates the bounding box of the text in the image
