@@ -1,3 +1,5 @@
+## [1.12.3](https://github.com/RouHim/sensor-core/compare/1.12.2...1.12.3) (2024-02-22)
+
 ## [1.12.2](https://github.com/RouHim/sensor-core/compare/1.12.1...1.12.2) (2024-01-06)
 
 ## [1.12.1](https://github.com/RouHim/sensor-core/compare/1.12.0...1.12.1) (2024-01-02)
