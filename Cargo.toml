@@ -17,7 +17,7 @@ serde = { version = "1.0.197", features = ["derive"] }                          
 image = "0.24.9"                                                                # Image processing
 imageproc = "0.23.0"                                                            # Extended image processing
 rusttype = "0.9.3"                                                              # Font handling / rendering
-log = "0.4.20"                                                                  # Logging
+log = "0.4.21"                                                                  # Logging
 dirs = "5.0.1"                                                                  # Directory handling
 
 [dev-dependencies]
