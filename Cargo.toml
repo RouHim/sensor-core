@@ -21,7 +21,7 @@ log = "0.4.21"                                                                  
 dirs = "5.0.1"                                                                  # Directory handling
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 font-loader = { git = "https://github.com/matprec/rust-font-loader" }
 
 [[bench]]
