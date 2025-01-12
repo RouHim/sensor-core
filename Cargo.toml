@@ -18,7 +18,7 @@ image = "0.24.9"                                                                
 imageproc = "0.23.0"                                                            # Extended image processing
 rusttype = "0.9.3"                                                              # Font handling / rendering
 log = "0.4.21"                                                                  # Logging
-dirs = "5.0.1"                                                                  # Directory handling
+dirs = "6.0.0"                                                                  # Directory handling
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
