@@ -15,7 +15,7 @@ categories = ["rendering"]
 [dependencies]
 serde = { version = "1.0.200", features = ["derive"] }                          # Serialization
 image = "0.24.9"                                                                # Image processing
-imageproc = "0.23.0"                                                            # Extended image processing
+imageproc = "0.25.0"                                                            # Extended image processing
 rusttype = "0.9.3"                                                              # Font handling / rendering
 log = "0.4.21"                                                                  # Logging
 dirs = "6.0.0"                                                                  # Directory handling
