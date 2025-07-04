@@ -12,31 +12,15 @@ pub mod conditional_image_renderer;
 pub mod graph_renderer;
 pub mod text_renderer;
 
-/// Indicates the current type of message to be sent to the display.
-/// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
-/// Or the actual render loop, where the prev. stored asses will be used to render the image.
-/// The type is used to deserialize the data to the correct struct.
-/// The data is a vector of bytes, which will be deserialized to the correct struct, depending on the type.
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct TransportMessage {
-    pub transport_type: TransportType,
-    pub data: Vec<u8>,
-}
-
-/// Represents the type of the message to be sent to the display.
-/// Either a message to prepares static assets, by sending them to the display, and then be stored on the fs.
-/// Or the actual render loop, where the prev. stored asses will be used to render the image.
-/// The type is used to deserialize the data to the correct struct.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-pub enum TransportType {
-    /// De/Serialize to PrepareTextData
-    PrepareText,
-    /// De/Serialize to PrepareStaticImageData
-    PrepareStaticImage,
-    /// De/Serialize to PrepareConditionalImageData
-    PrepareConditionalImage,
-    /// De/Serialize to RenderData
-    RenderImage,
+/// Static data bundle that gets sent to clients during registration
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StaticClientData {
+    /// Font data: font family name -> font bytes
+    pub text_data: HashMap<String, Vec<u8>>,
+    /// Static images: element ID -> PNG image bytes
+    pub static_image_data: HashMap<String, Vec<u8>>,
+    /// Conditional images: element ID -> (image name -> PNG image bytes)
+    pub conditional_image_data: HashMap<String, HashMap<String, Vec<u8>>>,
 }
 
 /// Represents the data to be rendered on a display.
@@ -45,42 +29,6 @@ pub enum TransportType {
 pub struct RenderData {
     pub display_config: DisplayConfig,
     pub sensor_values: Vec<SensorValue>,
-}
-
-/// Represents the preparation data for the render process.
-/// It holds all static assets to be rendered.
-/// This is done once before the loop starts.
-/// Each asset will be stored on the display locally, and load during the render process by its
-/// asset id / element id
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PrepareTextData {
-    /// Key is the element id
-    /// Value is the font data
-    pub font_data: HashMap<String, Vec<u8>>,
-}
-
-/// Represents the preparation data for the render process.
-/// It holds all static assets to be rendered.
-/// This is done once before the loop starts.
-/// Each asset will be stored on the display locally, and load during the render process by its
-/// asset id / element id
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PrepareStaticImageData {
-    /// Key is the element id
-    /// Value is the element data
-    pub images_data: HashMap<String, Vec<u8>>,
-}
-
-/// Represents the preparation data for the render process.
-/// It holds all static assets to be rendered.
-/// This is done once before the loop starts.
-/// Each asset will be stored on the display locally, and load during the render process by its
-/// asset id / element id
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PrepareConditionalImageData {
-    /// Key is the element id
-    /// Value is the element data
-    pub images_data: HashMap<String, HashMap<String, Vec<u8>>>,
 }
 
 /// Represents the display config.
