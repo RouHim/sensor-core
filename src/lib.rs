@@ -27,20 +27,8 @@ pub struct StaticClientData {
 /// It holds the display config and the sensor values.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct RenderData {
-    pub display_config: DisplayConfig,
-    pub sensor_values: Vec<SensorValue>,
-}
-
-/// Represents the display config.
-/// It holds the resolution and the elements to be rendered.
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub struct DisplayConfig {
-    #[serde(default)]
-    pub resolution_height: u32,
-    #[serde(default)]
-    pub resolution_width: u32,
-    #[serde(default)]
     pub elements: Vec<ElementConfig>,
+    pub sensor_values: Vec<SensorValue>,
 }
 
 /// Represents a single element to be rendered on a display.
@@ -112,7 +100,7 @@ pub struct ImageConfig {
     pub image_path: String,
 }
 
-/// Represents the type of a graph element on a display.
+/// Represents the type of graph element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum GraphType {
     #[default]
@@ -168,7 +156,7 @@ pub struct ConditionalImageConfig {
     pub height: u32,
 }
 
-/// Represents the type of an element on a display.
+/// Represents the type of element on a display.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub enum ElementType {
     #[default]
@@ -213,7 +201,7 @@ pub enum SensorValueModifier {
     Avg,
 }
 
-/// Represents the type of a sensor value.
+/// Represents the type of sensor value.
 /// This is used to determine how to render the value.
 /// For example a text value will be rendered as text, while a number value can be rendered as a graph.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
@@ -225,24 +213,21 @@ pub enum SensorType {
     Number,
 }
 
-/// Render the image
-/// The image will be a RGB8 png image
+/// Render the image, will be a RGB8 png image
 pub fn render_lcd_image(
-    display_config: DisplayConfig,
+    elements: &[ElementConfig],
     sensor_value_history: &[Vec<SensorValue>],
     fonts_data: &HashMap<String, Vec<u8>>,
+    image_width: u32,
+    image_height: u32,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let start_time = Instant::now();
-
-    // Get the resolution from the lcd config
-    let image_width = display_config.resolution_width;
-    let image_height = display_config.resolution_height;
 
     // Create a new ImageBuffer with the specified resolution
     let mut image = ImageBuffer::new(image_width, image_height);
 
     // Iterate over lcd elements and draw them on the image
-    for lcd_element in display_config.elements {
+    for lcd_element in elements {
         draw_element(&mut image, lcd_element, sensor_value_history, fonts_data);
     }
 
@@ -256,7 +241,7 @@ pub fn render_lcd_image(
 /// Distinguishes between the different element types and calls the corresponding draw function.
 fn draw_element(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
-    lcd_element: ElementConfig,
+    lcd_element: &ElementConfig,
     sensor_value_history: &[Vec<SensorValue>],
     fonts_data: &HashMap<String, Vec<u8>>,
 ) {
@@ -267,7 +252,7 @@ fn draw_element(
     // diff between type
     match lcd_element.element_type {
         ElementType::Text => {
-            let text_config = lcd_element.text_config.unwrap();
+            let text_config = lcd_element.text_config.as_ref().unwrap();
             draw_text(
                 image,
                 &lcd_element.id,
@@ -282,14 +267,13 @@ fn draw_element(
             draw_static_image(image, &lcd_element.id, x, y);
         }
         ElementType::Graph => {
-            let mut graph_config = lcd_element.graph_config.unwrap();
-            graph_config.sensor_values =
+            let graph_config = lcd_element.graph_config.as_ref().unwrap().clone();
+            let sensor_values =
                 extract_value_sequence(sensor_value_history, &graph_config.sensor_id);
-
-            draw_graph(image, x, y, graph_config);
+            draw_graph(image, x, y, &graph_config, sensor_values);
         }
         ElementType::ConditionalImage => {
-            let conditional_image_config = lcd_element.conditional_image_config.unwrap();
+            let conditional_image_config = lcd_element.conditional_image_config.as_ref().unwrap();
             let sensor_value = sensor_value_history[0]
                 .iter()
                 .find(|&s| s.id == conditional_image_config.sensor_id);
@@ -327,10 +311,16 @@ fn draw_static_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element_id: &st
     debug!("    - Image render duration: {:?}", start_time.elapsed());
 }
 
-fn draw_graph(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, x: i32, y: i32, config: GraphConfig) {
+fn draw_graph(
+    image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    x: i32,
+    y: i32,
+    config: &GraphConfig,
+    sensor_values: Vec<f64>,
+) {
     let start_time = Instant::now();
 
-    let img_data = graph_renderer::render(&config);
+    let img_data = graph_renderer::render(config, sensor_values);
     let graph_image = image::load_from_memory(&img_data).unwrap();
 
     image::imageops::overlay(image, &graph_image, x as i64, y as i64);
@@ -344,7 +334,7 @@ fn draw_conditional_image(
     x: i32,
     y: i32,
     element_id: &str,
-    mut config: ConditionalImageConfig,
+    config: &ConditionalImageConfig,
     sensor_value: Option<&SensorValue>,
 ) {
     let start_time = Instant::now();
@@ -356,9 +346,11 @@ fn draw_conditional_image(
         Some(sensor_value) => sensor_value,
     };
 
-    config.sensor_value = sensor_value.value.clone();
+    let config = config.clone();
+    let sensor_type = &sensor_value.sensor_type;
+    let sensor_value = &sensor_value.value;
     let img_data =
-        conditional_image_renderer::render(element_id, &sensor_value.sensor_type, &config);
+        conditional_image_renderer::render(element_id, sensor_value, sensor_type, &config);
 
     if let Some(img_data) = img_data {
         let conditional_image = image::load_from_memory(&img_data).unwrap();
@@ -375,7 +367,7 @@ fn draw_conditional_image(
 fn draw_text(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     _element_id: &str,
-    text_config: TextConfig,
+    text_config: &TextConfig,
     x: i32,
     y: i32,
     sensor_value_history: &[Vec<SensorValue>],
@@ -398,7 +390,7 @@ fn draw_text(
     let text_image = text_renderer::render(
         image.width(),
         image.height(),
-        &text_config,
+        text_config,
         sensor_value_history,
         &font,
     );
