@@ -39,7 +39,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     };
 
     // Get font cache dir
-    let cache_dir = get_cache_dir(element_id, &ElementType::Text).join(element_id);
+    let cache_dir = get_cache_dir(element_id, &ElementType::Text);
     fs::remove_dir_all(cache_dir.parent().unwrap()).unwrap_or_default();
     fs::create_dir_all(cache_dir.parent().unwrap()).unwrap();
 
@@ -121,7 +121,7 @@ fn draw_text_fs(
         .replace("{value}", value)
         .replace("{unit}", unit);
 
-    let cache_dir = get_cache_dir(element_id, &ElementType::Text).join(element_id);
+    let cache_dir = get_cache_dir(element_id, &ElementType::Text);
     let font_path = cache_dir.to_str().unwrap();
 
     if !Path::new(&font_path).exists() {

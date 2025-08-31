@@ -13,14 +13,15 @@ pub mod graph_renderer;
 pub mod text_renderer;
 
 /// Static data bundle that gets sent to clients during registration
-#[derive(Serialize, Deserialize, Debug)]
+/// Each asset now includes an MD5 hash for smart caching
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct StaticClientData {
-    /// Font data: font family name -> font bytes
-    pub text_data: HashMap<String, Vec<u8>>,
-    /// Static images: element ID -> PNG image bytes
-    pub static_image_data: HashMap<String, Vec<u8>>,
-    /// Conditional images: element ID -> (image name -> PNG image bytes)
-    pub conditional_image_data: HashMap<String, HashMap<String, Vec<u8>>>,
+    /// Font data: font family name -> (md5_hash, font bytes)
+    pub text_data: HashMap<String, (String, Vec<u8>)>,
+    /// Static images: element ID -> (md5_hash, PNG image bytes)
+    pub static_image_data: HashMap<String, (String, Vec<u8>)>,
+    /// Conditional images: element ID -> (image name -> (md5_hash, PNG image bytes))
+    pub conditional_image_data: HashMap<String, HashMap<String, (String, Vec<u8>)>>,
 }
 
 /// Represents the data to be rendered on a display.
@@ -218,13 +219,13 @@ pub fn render_lcd_image(
     elements: &[ElementConfig],
     sensor_value_history: &[Vec<SensorValue>],
     fonts_data: &HashMap<String, Vec<u8>>,
-    image_width: u32,
-    image_height: u32,
+    image_width: u16,
+    image_height: u16,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let start_time = Instant::now();
 
     // Create a new ImageBuffer with the specified resolution
-    let mut image = ImageBuffer::new(image_width, image_height);
+    let mut image = ImageBuffer::new(image_width as u32, image_height as u32);
 
     // Iterate over lcd elements and draw them on the image
     for lcd_element in elements {
@@ -293,7 +294,7 @@ fn draw_element(
 fn draw_static_image(image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, element_id: &str, x: i32, y: i32) {
     let start_time = Instant::now();
 
-    let cache_dir = get_cache_dir(element_id, &ElementType::StaticImage).join(element_id);
+    let cache_dir = get_cache_dir(element_id, &ElementType::StaticImage);
     let file_path = cache_dir.to_str().unwrap();
 
     if !Path::new(&file_path).exists() {
@@ -443,16 +444,26 @@ pub fn is_image(dir_entry: &DirEntry) -> bool {
 
 /// Get the cache directory for the given element
 pub fn get_cache_dir(element_id: &str, element_type: &ElementType) -> PathBuf {
-    let element_type_folder_name = match element_type {
-        ElementType::Text => "text",
-        ElementType::StaticImage => "static-image",
-        ElementType::Graph => "graph",
-        ElementType::ConditionalImage => "conditional-image",
-    };
+    let element_type_folder_name = get_element_type_dir_name(element_type);
 
     get_cache_base_dir()
         .join(element_type_folder_name)
         .join(element_id)
+}
+
+/// Get the base cache directory
+pub fn get_element_cache_dir(element_type: &ElementType) -> PathBuf {
+    let element_type_folder_name = get_element_type_dir_name(element_type);
+    get_cache_base_dir().join(element_type_folder_name)
+}
+
+fn get_element_type_dir_name(element_type: &ElementType) -> &str {
+    match element_type {
+        ElementType::Text => "text",
+        ElementType::StaticImage => "static-image",
+        ElementType::Graph => "graph",
+        ElementType::ConditionalImage => "conditional-image",
+    }
 }
 
 /// Get the base cache directory
