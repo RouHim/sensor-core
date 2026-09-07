@@ -9,12 +9,12 @@ use crate::{hex_to_rgba, GraphConfig, GraphType};
 /// A vector of bytes containing the RGB8 png image
 /// # Arguments
 /// * `graph_config` - The config for the graph
-pub fn render(graph_config: &GraphConfig) -> Vec<u8> {
+pub fn render(graph_config: &GraphConfig, sensor_values: Vec<f64>) -> Vec<u8> {
     let width = graph_config.width;
     let height = graph_config.height;
 
     // Prepare the data for the graph
-    let graph_data = prepare_graph_data(width, &graph_config.sensor_values);
+    let graph_data = prepare_graph_data(width, &sensor_values);
 
     // Render the graph
     let mut image = match graph_config.graph_type {
@@ -57,7 +57,7 @@ fn draw_border(
 
 /// Prepares the plot data for the graph.
 /// Aligns the sensor values to the width of the desired graph width.
-fn prepare_graph_data(width: u32, sensor_values: &Vec<f64>) -> Vec<f64> {
+fn prepare_graph_data(width: u32, sensor_values: &[f64]) -> Vec<f64> {
     // Ensure that sensor values does not exceed the width, if so cut them and keep the last values
     let sensor_values = if sensor_values.len() > width as usize {
         sensor_values[(sensor_values.len() - width as usize)..].to_vec()

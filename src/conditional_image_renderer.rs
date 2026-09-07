@@ -8,6 +8,7 @@ use crate::{ConditionalImageConfig, ElementType, SensorType};
 /// Get the image data based on the current sensor value and type
 pub fn render(
     element_id: &str,
+    sensor_value: &str,
     sensor_type: &SensorType,
     conditional_image_config: &ConditionalImageConfig,
 ) -> Option<Vec<u8>> {
@@ -15,21 +16,20 @@ pub fn render(
     let cache_image_folder = cache_image_folder.to_str().unwrap();
 
     match sensor_type {
-        SensorType::Text => render_text_sensor(conditional_image_config, cache_image_folder),
-        SensorType::Number => render_number_sensor(conditional_image_config, cache_image_folder),
+        SensorType::Text => render_text_sensor(cache_image_folder, sensor_value),
+        SensorType::Number => render_number_sensor(
+            cache_image_folder,
+            sensor_value,
+            conditional_image_config.min_sensor_value,
+            conditional_image_config.max_sensor_value,
+        ),
     }
 }
 
-/// Renders a given text sensor to an conditional image
-fn render_text_sensor(
-    conditional_image_config: &ConditionalImageConfig,
-    cache_images_folder: &str,
-) -> Option<Vec<u8>> {
+/// Renders a given text sensor to a conditional image
+fn render_text_sensor(cache_images_folder: &str, sensor_value: &str) -> Option<Vec<u8>> {
     // Select image based on sensor value
-    let image_path = get_image_based_on_text_sensor_value(
-        &conditional_image_config.sensor_value,
-        cache_images_folder,
-    );
+    let image_path = get_image_based_on_text_sensor_value(sensor_value, cache_images_folder);
 
     // Read image to memory
     // We heavily assume that this is already png encoded to skip the expensive png decoding
@@ -37,16 +37,18 @@ fn render_text_sensor(
     image_path.and_then(|image_path| fs::read(image_path).ok())
 }
 
-/// Renders a given number sensor to an conditional image
+/// Renders a given number sensor to a conditional image
 fn render_number_sensor(
-    conditional_image_config: &ConditionalImageConfig,
     cache_images_folder: &str,
+    sensor_value: &str,
+    sensor_min_value: f64,
+    sensor_max_value: f64,
 ) -> Option<Vec<u8>> {
     // Select image based on sensor value
-    let sensor_value: f64 = conditional_image_config.sensor_value.parse().unwrap();
+    let sensor_value: f64 = sensor_value.parse().unwrap();
     let image_path = get_image_based_on_numeric_sensor_value(
-        conditional_image_config.min_sensor_value,
-        conditional_image_config.max_sensor_value,
+        sensor_min_value,
+        sensor_max_value,
         sensor_value,
         cache_images_folder,
     );
@@ -150,7 +152,7 @@ fn get_best_fitting_image_path(
 fn remove_file_extension(file_name: OsString) -> String {
     let file_name = file_name.to_str().unwrap();
     let mut file_name = file_name.to_string();
-    let extension = file_name.split('.').last();
+    let extension = file_name.split('.').next_back();
     if let Some(extension) = extension {
         file_name = file_name
             .chars()

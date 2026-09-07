@@ -19,6 +19,7 @@ imageproc = "0.23.0"                                                            
 rusttype = "0.9.3"                                                              # Font handling / rendering
 log = "0.4.21"                                                                  # Logging
 dirs = "6.0.0"                                                                  # Directory handling
+lru = "0.12.1"                                                                  # LRU cache for font loading
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
