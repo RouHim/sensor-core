@@ -86,12 +86,13 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     });
 
     criterion.bench_function("draw text neo", |bencher| {
+        let history = std::collections::VecDeque::from(vec![vec![sensor_value.clone()]]);
         bencher.iter(|| {
             text_renderer::render(
                 black_box(base_image.width()),
                 black_box(base_image.height()),
                 black_box(&text_config),
-                black_box(&[vec![sensor_value.clone()]]),
+                black_box(&history),
                 black_box(&font),
             )
         })

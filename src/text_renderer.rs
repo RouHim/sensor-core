@@ -2,7 +2,10 @@ use ab_glyph::Font;
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
 
-use crate::{hex_to_rgba, SensorType, SensorValue, SensorValueModifier, TextAlign, TextConfig};
+use crate::{
+    hex_to_rgba, SensorType, SensorValue, SensorValueHistory, SensorValueModifier, TextAlign,
+    TextConfig,
+};
 
 /// Renders the text element to a png image.
 /// Render Pipeline:
@@ -15,7 +18,7 @@ pub fn render(
     image_width: u32,
     image_height: u32,
     text_config: &TextConfig,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
     font: &impl Font,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     // Initialize image buffer
@@ -90,7 +93,7 @@ pub fn render(
 fn replace_placeholders(
     text_config: &TextConfig,
     sensor_id: &str,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
 ) -> String {
     let mut text_format = text_config.format.clone();
 
@@ -134,7 +137,7 @@ fn replace_placeholders(
 }
 
 /// Returns the sensor unit of the latest sensor value
-fn get_unit(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+fn get_unit(sensor_id: &str, sensor_value_history: &SensorValueHistory) -> String {
     match get_latest_value(sensor_id, sensor_value_history) {
         Some(value) => value.unit,
         None => "".to_string(),
@@ -142,7 +145,7 @@ fn get_unit(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> Strin
 }
 
 // Returns the latest sensor value
-fn get_value(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+fn get_value(sensor_id: &str, sensor_value_history: &SensorValueHistory) -> String {
     match get_latest_value(sensor_id, sensor_value_history) {
         Some(value) => value.value,
         None => "N/A".to_string(),
@@ -150,7 +153,7 @@ fn get_value(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> Stri
 }
 
 /// Returns the minimum sensor value of all sensor values in the history
-fn get_value_min(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+fn get_value_min(sensor_id: &str, sensor_value_history: &SensorValueHistory) -> String {
     let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
 
     // If there are no values, return N/A
@@ -168,7 +171,7 @@ fn get_value_min(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> 
 }
 
 /// Returns the maximum sensor value of all sensor values in the history
-fn get_value_max(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+fn get_value_max(sensor_id: &str, sensor_value_history: &SensorValueHistory) -> String {
     let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
 
     // If there are no values, return N/A
@@ -186,7 +189,7 @@ fn get_value_max(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> 
 }
 
 /// Returns the average sensor value of all sensor values in the history
-fn get_value_avg(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> String {
+fn get_value_avg(sensor_id: &str, sensor_value_history: &SensorValueHistory) -> String {
     let number_values_history = get_sensor_values_as_number(sensor_id, sensor_value_history);
 
     // If there are no values, return N/A
@@ -201,7 +204,7 @@ fn get_value_avg(sensor_id: &str, sensor_value_history: &[Vec<SensorValue>]) -> 
 
 fn get_sensor_values_as_number(
     sensor_id: &str,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
 ) -> Vec<f64> {
     let values = sensor_value_history
         .iter()
@@ -214,11 +217,11 @@ fn get_sensor_values_as_number(
 
 fn get_latest_value(
     sensor_id: &str,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
 ) -> Option<SensorValue> {
-    sensor_value_history[0]
-        .iter()
-        .find(|&s| s.id == sensor_id)
+    sensor_value_history
+        .front()
+        .and_then(|values| values.iter().find(|&s| s.id == sensor_id))
         .cloned()
 }
 
@@ -329,11 +332,11 @@ mod tests {
             alignment: TextAlign::Left,
             ..Default::default()
         };
-        let history = vec![vec![SensorValue {
+        let history = std::collections::VecDeque::from(vec![vec![SensorValue {
             id: "x".to_string(),
             value: "42".to_string(),
             ..Default::default()
-        }]];
+        }]]);
 
         let image = render(40, 20, &text_config, &history, &font);
 

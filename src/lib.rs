@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
@@ -7,6 +7,30 @@ use std::time::Instant;
 use image::{ImageBuffer, ImageFormat, Rgba};
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
+
+/// Contract version of the sensor-bridge <-> sensor-display wire format
+/// (JSON responses and serialized static payloads).
+/// Increment on ANY incompatible change to an exchanged payload or format.
+pub const PROTOCOL_VERSION: u32 = 2;
+
+/// Newest-first, bounded history of sensor samples.
+pub type SensorValueHistory = VecDeque<Vec<SensorValue>>;
+
+/// Canonical client identifier: the MAC address trimmed and uppercased.
+/// Every endpoint resolving a client MUST funnel its input through this.
+pub fn normalize_mac(mac_address: &str) -> String {
+    mac_address.trim().to_uppercase()
+}
+
+/// Sleeps until `deadline`; returns immediately when the deadline has passed.
+/// Used to keep fixed 1 Hz schedules free of drift: the deadline is advanced by
+/// the interval, never re-based on the time the work finished.
+pub fn sleep_until(deadline: std::time::Instant) {
+    let now = std::time::Instant::now();
+    if deadline > now {
+        std::thread::sleep(deadline - now);
+    }
+}
 
 pub mod conditional_image_renderer;
 pub mod graph_renderer;
@@ -217,7 +241,7 @@ pub enum SensorType {
 /// Render the image, will be a RGB8 png image
 pub fn render_lcd_image(
     elements: &[ElementConfig],
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
     fonts_data: &HashMap<String, Vec<u8>>,
     image_width: u16,
     image_height: u16,
@@ -243,7 +267,7 @@ pub fn render_lcd_image(
 fn draw_element(
     image: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
     lcd_element: &ElementConfig,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
     fonts_data: &HashMap<String, Vec<u8>>,
 ) {
     let x = lcd_element.x;
@@ -275,9 +299,11 @@ fn draw_element(
         }
         ElementType::ConditionalImage => {
             let conditional_image_config = lcd_element.conditional_image_config.as_ref().unwrap();
-            let sensor_value = sensor_value_history[0]
-                .iter()
-                .find(|&s| s.id == conditional_image_config.sensor_id);
+            let sensor_value = sensor_value_history.front().and_then(|values| {
+                values
+                    .iter()
+                    .find(|&s| s.id == conditional_image_config.sensor_id)
+            });
             draw_conditional_image(
                 image,
                 x,
@@ -371,7 +397,7 @@ fn draw_text(
     text_config: &TextConfig,
     x: i32,
     y: i32,
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
     fonts_data: &HashMap<String, Vec<u8>>,
 ) {
     let start_time = Instant::now();
@@ -425,7 +451,7 @@ pub fn hex_to_rgba(hex_string: &str) -> Rgba<u8> {
 
 /// Extracts the historical values from the sensor_value_history and reverses the order
 pub fn extract_value_sequence(
-    sensor_value_history: &[Vec<SensorValue>],
+    sensor_value_history: &SensorValueHistory,
     sensor_id: &str,
 ) -> Vec<f64> {
     let mut sensor_values: Vec<f64> = sensor_value_history
@@ -487,4 +513,63 @@ pub fn get_config_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap()
         .join(std::env::var("SENSOR_BRIDGE_APP_NAME").unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::VecDeque;
+
+    #[test]
+    fn normalize_mac_trims_and_uppercases() {
+        assert_eq!(normalize_mac("  aa:bb:cc:dd:ee:ff "), "AA:BB:CC:DD:EE:FF");
+        assert_eq!(normalize_mac("AA:BB:CC:DD:EE:FF"), "AA:BB:CC:DD:EE:FF");
+        assert_eq!(
+            normalize_mac("aa:bb:cc:dd:ee:ff"),
+            normalize_mac("Aa:Bb:Cc:Dd:Ee:Ff")
+        );
+    }
+
+    #[test]
+    fn sleep_until_returns_immediately_for_past_deadline() {
+        let start = std::time::Instant::now();
+        sleep_until(start - std::time::Duration::from_secs(1));
+        assert!(start.elapsed() < std::time::Duration::from_millis(50));
+    }
+
+    #[test]
+    fn render_lcd_image_accepts_deque_history() {
+        let mut history: SensorValueHistory = VecDeque::new();
+        history.push_front(vec![SensorValue {
+            id: "cpu".to_string(),
+            value: "42".to_string(),
+            ..Default::default()
+        }]);
+
+        let image = render_lcd_image(&[], &history, &HashMap::new(), 8, 4);
+
+        assert_eq!(image.width(), 8);
+        assert_eq!(image.height(), 4);
+    }
+
+    #[test]
+    fn extract_value_sequence_returns_chronological_order() {
+        let mut history: SensorValueHistory = VecDeque::new();
+        // push_front: the last push is the newest entry
+        history.push_front(vec![SensorValue {
+            id: "x".to_string(),
+            value: "3".to_string(),
+            sensor_type: SensorType::Number,
+            ..Default::default()
+        }]);
+        history.push_front(vec![SensorValue {
+            id: "x".to_string(),
+            value: "2".to_string(),
+            sensor_type: SensorType::Number,
+            ..Default::default()
+        }]);
+
+        // Newest first (2, then 3) reversed into chronological order (3, then 2)
+        assert_eq!(extract_value_sequence(&history, "x"), vec![3.0, 2.0]);
+    }
 }
