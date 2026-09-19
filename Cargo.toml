@@ -4,6 +4,7 @@ authors = ["Rouven Himmelstein <rouven@himmelstein.info>"]
 version = "0.0.0" # will be replaced by the github action build script
 license = "GPL-3.0"
 edition = "2021"
+rust-version = "1.88"
 description = "Core library for the sensor-bridge/display project"
 readme = "README.md"
 homepage = "https://github.com/RouHim/sensor-core"
@@ -13,16 +14,16 @@ categories = ["rendering"]
 
 
 [dependencies]
-serde = { version = "1.0.200", features = ["derive"] }                          # Serialization
-image = "0.24.9"                                                                # Image processing
-imageproc = "0.23.0"                                                            # Extended image processing
-rusttype = "0.9.3"                                                              # Font handling / rendering
-log = "0.4.21"                                                                  # Logging
-dirs = "6.0.0"                                                                  # Directory handling
-lru = "0.12.1"                                                                  # LRU cache for font loading
+serde = { version = "1.0.229", features = ["derive"] }                          # Serialization
+image = "0.25.10"                                                               # Image processing
+imageproc = "0.27.0"                                                            # Extended image processing
+ab_glyph = "0.2.32"                                                             # Font handling / rendering
+log = "0.4.34"                                                                  # Logging
+dirs = "7.0.0"                                                                  # Directory handling
+lru = "0.18.4"                                                                  # LRU cache for font loading
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion = { version = "0.8.2", features = ["html_reports"] }
 font-loader = { git = "https://github.com/matprec/rust-font-loader" }
 
 [[bench]]

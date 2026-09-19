@@ -386,7 +386,16 @@ fn draw_text(
             return;
         }
     };
-    let font = rusttype::Font::try_from_bytes(font_data).unwrap();
+    let font = match ab_glyph::FontRef::try_from_slice(font_data) {
+        Ok(font) => font,
+        Err(err) => {
+            error!(
+                "Font data for {} is invalid: {}",
+                text_config.font_family, err
+            );
+            return;
+        }
+    };
 
     let text_image = text_renderer::render(
         image.width(),

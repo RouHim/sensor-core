@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use font_loader::system_fonts;
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
@@ -9,6 +9,7 @@ use sensor_core::{
 };
 use std::collections::HashMap;
 use std::fs;
+use std::hint::black_box;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -49,7 +50,7 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         .build();
     let font_data = system_fonts::get(&font_family).unwrap().0;
     fs::write(cache_dir, &font_data).unwrap();
-    let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
+    let font = ab_glyph::FontVec::try_from_vec(font_data.clone()).unwrap();
 
     // Create a arc mutex that holds a hashmap of fonts
     let mut font_data_table = HashMap::new();
@@ -108,7 +109,7 @@ fn draw_text_fs(
     y: i32,
     sensor_value: Option<&SensorValue>,
 ) {
-    let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
+    let font_scale = text_config.font_size as f32;
     let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
     let text_format = text_config.format;
 
@@ -130,7 +131,7 @@ fn draw_text_fs(
     }
 
     let font_data = fs::read(font_path).unwrap();
-    let font = rusttype::Font::try_from_bytes(&font_data).unwrap();
+    let font = ab_glyph::FontRef::try_from_slice(&font_data).unwrap();
 
     drawing::draw_text_mut(image, font_color, x, y, font_scale, &font, text.as_str());
 }
@@ -143,7 +144,7 @@ fn draw_text_memory(
     y: i32,
     sensor_value: Option<&SensorValue>,
 ) {
-    let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
+    let font_scale = text_config.font_size as f32;
     let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
     let text_format = text_config.format;
 
@@ -158,7 +159,7 @@ fn draw_text_memory(
 
     let font_data_cache = font_data_cache.lock().unwrap();
     let font_data = font_data_cache.get(&text_config.font_family).unwrap();
-    let font = rusttype::Font::try_from_bytes(font_data).unwrap();
+    let font = ab_glyph::FontRef::try_from_slice(font_data).unwrap();
 
     drawing::draw_text_mut(image, font_color, x, y, font_scale, &font, text.as_str());
 }

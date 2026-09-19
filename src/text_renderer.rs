@@ -1,6 +1,6 @@
+use ab_glyph::Font;
 use image::{ImageBuffer, Rgba};
 use imageproc::drawing;
-use rusttype::Font;
 
 use crate::{hex_to_rgba, SensorType, SensorValue, SensorValueModifier, TextAlign, TextConfig};
 
@@ -16,10 +16,10 @@ pub fn render(
     image_height: u32,
     text_config: &TextConfig,
     sensor_value_history: &[Vec<SensorValue>],
-    font: &Font,
+    font: &impl Font,
 ) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     // Initialize image buffer
-    let font_scale = rusttype::Scale::uniform(text_config.font_size as f32);
+    let font_scale = text_config.font_size as f32;
     let font_color: Rgba<u8> = hex_to_rgba(&text_config.font_color);
     let sensor_id = &text_config.sensor_id;
 
@@ -299,4 +299,48 @@ fn get_bounding_box(image: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> imageproc::rect::
     }
 
     imageproc::rect::Rect::at(min_x as i32, min_y as i32).of_size(max_x - min_x, max_y - min_y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Renders text with a system font. Skips (with a message) when the machine
+    /// has no fontconfig font at all, so the suite stays runnable everywhere.
+    #[test]
+    fn renders_text_pixels_with_an_ab_glyph_font() {
+        let property = font_loader::system_fonts::FontPropertyBuilder::new().build();
+        let font_data = match font_loader::system_fonts::get(&property) {
+            Some((font_data, _index)) => font_data,
+            None => {
+                eprintln!("skipping: no system font available");
+                return;
+            }
+        };
+        let font = ab_glyph::FontVec::try_from_vec(font_data).expect("valid font bytes");
+
+        let text_config = TextConfig {
+            sensor_id: "x".to_string(),
+            format: "{value}".to_string(),
+            font_size: 12,
+            font_color: "#FFFFFFFF".to_string(),
+            width: 40,
+            height: 20,
+            alignment: TextAlign::Left,
+            ..Default::default()
+        };
+        let history = vec![vec![SensorValue {
+            id: "x".to_string(),
+            value: "42".to_string(),
+            ..Default::default()
+        }]];
+
+        let image = render(40, 20, &text_config, &history, &font);
+
+        assert_eq!((image.width(), image.height()), (40, 20));
+        assert!(
+            image.pixels().any(|pixel| pixel.0[3] > 0),
+            "rendered text must contain visible pixels"
+        );
+    }
 }

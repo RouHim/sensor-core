@@ -30,7 +30,7 @@ pub fn render(graph_config: &GraphConfig, sensor_values: Vec<f64>) -> Vec<u8> {
     // Encode to png and return encoded bytes
     let mut writer = BufWriter::new(Cursor::new(Vec::new()));
     image
-        .write_to(&mut writer, image::ImageOutputFormat::Png)
+        .write_to(&mut writer, image::ImageFormat::Png)
         .unwrap();
 
     writer.into_inner().unwrap().into_inner()
@@ -197,4 +197,30 @@ fn get_max(values: &[f64]) -> f64 {
         }
     }
     max
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn renders_a_decodable_png_of_the_requested_size() {
+        let config = GraphConfig {
+            width: 10,
+            height: 5,
+            min_sensor_value: Some(0.0),
+            max_sensor_value: Some(10.0),
+            graph_type: GraphType::Line,
+            graph_color: "#FF0000FF".to_string(),
+            background_color: "#000000FF".to_string(),
+            border_color: "#00000000".to_string(),
+            graph_stroke_width: 1,
+            ..Default::default()
+        };
+
+        let bytes = render(&config, vec![1.0, 2.0, 3.0]);
+
+        let image = image::load_from_memory(&bytes).expect("graph must be a decodable PNG");
+        assert_eq!((image.width(), image.height()), (10, 5));
+    }
 }
